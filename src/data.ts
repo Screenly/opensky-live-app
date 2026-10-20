@@ -6,6 +6,7 @@ import type { Airport, FlightQuery } from './lookup'
 import {
   hasCredentials,
   routeFor,
+  routesFromOpenSky,
   statesEverywhere,
   statesFor,
   statesIn,
@@ -14,8 +15,8 @@ import {
   type Snapshot,
   type Waypoint,
 } from './opensky'
-import type { Route } from './route'
-import { board } from './traffic'
+import { legNow, plausible, type Route } from './route'
+import { lookupOrder, type Routes } from './traffic'
 
 /** What the screen is watching, worked out once from the settings. */
 export type Plan =
@@ -36,7 +37,7 @@ export interface Cached {
   route: Route | null
   routeFor: string
   /** Airport mode: routes for the board's callsigns (missing in old caches). */
-  routes?: Record<string, Route | null>
+  routes?: Routes
 }
 
 /** Aircraft keep moving along their last course for at most this long. */
@@ -216,7 +217,19 @@ async function routeWhileGrounded(
     return { route: previous.route ?? null, routeFor: previous.routeFor }
   }
   for (const callsign of query.callsigns.slice(0, MAX_ROUTE_LOOKUPS)) {
-    const route = await routeFor(callsign)
+    const [opensky, adsbdb] = await Promise.all([
+      routesFromOpenSky([{ callsign }]),
+      routeFor(callsign),
+    ])
+    // No position to pick a leg by, so the whole itinerary, first to last.
+    const legs = opensky[callsign] ?? []
+    const route = legs.length
+      ? {
+          airline: adsbdb?.airline ?? '',
+          from: legs[0]!.from,
+          to: legs.at(-1)!.to,
+        }
+      : adsbdb
     if (route) return { route, routeFor: callsign }
   }
   return { route: null, routeFor: query.callsigns[0] ?? '' }
@@ -241,7 +254,7 @@ async function whereFromAndTo(
   // Both at once: the first screen, and its ready signal, wait for them.
   const [fetchedTrail, fetchedRoute] = await Promise.all([
     trailDue ? trackFor(found.icao24) : null,
-    !routeKnown && callsign ? routeFor(callsign) : null,
+    !routeKnown && callsign ? fittingRoute(callsign, found) : null,
   ])
 
   const keptTrail = sameFlight ? previous.trail : []
@@ -253,6 +266,26 @@ async function whereFromAndTo(
     route: routeKnown ? (previous.route ?? null) : fetchedRoute,
     routeFor: callsign,
   }
+}
+
+/**
+ * A followed flight's route: the leg of OpenSky's itinerary the aircraft is
+ * plausibly flying now, else adsbdb's route if that fits, else none — a
+ * route the aircraft is clearly not flying is worse than no route at all.
+ * adsbdb is asked alongside either way, for the airline's name, which
+ * OpenSky's route service does not give.
+ */
+async function fittingRoute(
+  callsign: string,
+  at: Aircraft,
+): Promise<Route | null> {
+  const [opensky, adsbdb] = await Promise.all([
+    routesFromOpenSky([{ callsign, lat: at.lat, lng: at.lng }]),
+    routeFor(callsign),
+  ])
+  const leg = legNow(opensky[callsign] ?? [], at)
+  if (leg) return { ...leg, airline: adsbdb?.airline ?? '' }
+  return adsbdb && plausible(adsbdb, at) ? adsbdb : null
 }
 
 /** One reading for the plan. Throws on any fetch failure; the caller decides. */
@@ -278,9 +311,13 @@ export async function fetchFor(
   const routes =
     plan.mode === 'airport'
       ? await routesFor(
-          board(plan.airport, aircraft, radiusKm).map((e) =>
-            e.aircraft.callsign.toUpperCase(),
+          lookupOrder(
+            plan.airport,
+            aircraft,
+            radiusKm,
+            getSettingWithDefault<boolean>('show_private', false),
           ),
+          plan.airport,
         )
       : {}
   return {

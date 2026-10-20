@@ -17,8 +17,29 @@ with the **What to Show** setting:
 ![Airport mode at SFO](screenshots/opensky-flight-map-airport-1920x1080.webp)
 ![Flight mode following EI105 over Ireland](screenshots/opensky-flight-map-flight-1920x1080.webp)
 
-Every aircraft is coloured by altitude band (ground, below FL100, FL100–300,
-above FL300) and drawn pointing along its track. Between refreshes each one
+Every aircraft is coloured by **what it is doing** and drawn pointing along
+its track. Its altitude is shown as a number, in its tag and in the list.
+That number is OpenSky's pressure altitude, worked out from air pressure on a
+standard day, not height above the ground, so an aircraft on short final or
+on a high-pressure day can read 0 or below sea level while still flying.
+Anything airborne under 100 ft (30 m) is shown as **<100 ft**; an aircraft
+reporting itself on the ground shows **GND**. Right after touchdown a
+transponder can take a few seconds to switch to "on the ground", so a landing
+aircraft may read <100 ft briefly before it becomes GND.
+
+| Colour | At an airport | Anywhere else |
+| ------ | ------------- | ------------- |
+| Orange | ↘ Arriving    | ↘ Descending  |
+| Green  | ↗ Departing   | ↗ Climbing    |
+| Blue   | → Passing     | → Level       |
+| Grey   | Ground        | Ground        |
+
+Each meaning keeps the same hue in both themes; the followed flight wears
+the purple accent. The palette was chosen with the dataviz validator (all
+pairs, accent included): colour-blind separation ΔE 12 dark / 9.5 light,
+normal vision 20.5 / 17.9, against targets of 8 and 15. Words and arrows
+(the legend, the board's ↘ Arrivals / ↗ Departures headings) say the same thing, so colour
+is never the only cue. Between refreshes each one
 keeps moving along its last known course and speed, so the map is alive even
 though OpenSky is only asked every few minutes.
 
@@ -42,29 +63,116 @@ though OpenSky is only asked every few minutes.
   the player's own position, and is used for the "From this screen" distance in
   flight mode.
 
+## The airport board
+
+Three counts — **Arriving**, **Departing**, **Ground** — and below them a
+board laid out like a terminal's, in two sections:
+
+| Section          | Each row                                      | Time                                 |
+| ---------------- | --------------------------------------------- | ------------------------------------ |
+| **↘ Arrivals**   | callsign, _From LAX Los Angeles_ (or country) | **~5 min** to land, or **Landing**   |
+| **↗ Departures** | callsign, _To LAS Las Vegas_ (or country)     | **~4 min ago**, or **Just departed** |
+
+Whether a flight is arriving or departing comes from what it is doing now:
+descending is an arrival, climbing a departure; away from the airfield it
+must also point at (or away from) the airport. On the airfield itself
+(within 6 km), pointing means nothing — runways run through the airport's
+reference point, so a take-off from the far end points straight at it — so
+only climb or descent counts. An aircraft that is level there, as at the
+moment of lift-off before OpenSky reports a climb, is placed by its route if
+one starts or ends here (UAL1111, SFO → Lihue: departing), and otherwise
+left off the board for that moment rather than guessed. A measured climb or
+descent always beats the route, which may be stale.
+
+Each section is in time order, as a terminal board is: arrivals by **soonest
+to land**, departures by **latest to take off** — so a fast jet further out
+lands before a slow one closer in. Anything without a usable time estimate
+goes last. Rows are trimmed from whichever section has more until the board
+fits, so a busy stream of arrivals cannot push departures off.
+
+The times are estimates, marked with **~**: OpenSky has positions, not
+schedules. Time to land is distance to the airport at current ground speed —
+vectors and holds make it longer. Time since take-off is distance flown at
+the average of lift-off speed (~145 kt) and current speed, since a climbing
+aircraft is still accelerating. Anything barely moving (or with a bad speed
+reading) shows **—** rather than a guess. Altitude and distance are not on
+the board; they stay on each aircraft's map tag.
+
+On the map, aircraft on the ground pile up on aprons, so wherever their grey
+icons would overlap, **at most two** are drawn: two overlapping still read as
+two aircraft, a dozen do not. The Ground count still counts every one. Only
+the ground is thinned — aircraft in the air, labelled ones and the followed
+flight are always drawn.
+
+Aircraft on the ground are counted but not listed; aircraft passing through
+are the airspace's, not the airport's, and are neither. Both stay on the
+map, in grey and blue. Each section's heading carries its colour key, and
+each row's icon wears the same colour as on the map.
+
+Aircraft on the ground are counted within 6 km of the airport, so a
+neighbouring airport's apron (Gatwick, seen from Heathrow) is drawn on the
+map but not counted. OpenSky only sees aircraft on the ground where a
+volunteer receiver can see the airport's surface: Heathrow, Frankfurt and San
+Francisco show dozens; airports without that coverage (Mumbai and Kochi at
+the time of writing) show 0.
+
+## Private flights
+
+Private aircraft fly under their **registration** (N780SP, OEELK), which
+identifies the owner. A public screen shouldn't broadcast private
+individuals' movements — in the US, owners can even ask the FAA to keep
+their aircraft out of public tracking (LADD / PIA) — and an airport board is
+about airline flights anyway. So by default they are **drawn on the map but
+never named or listed**: not on the board, not in the Arriving and Departing
+counts, not in the "closest to this screen" list, and never labelled.
+
+A flight counts as public when its callsign has an operator's three-letter
+code and a number (UAL1050, SKW425X, MXY812). The shape is the test, not a
+table of airline codes, which would be missing newer airlines (Breeze, JSX)
+and hide their flights. Business-jet charters and some military flights use
+the same shape (NetJets "EJA", the RAF's "RRR") and are listed.
+
+The **Show Private Flights** setting (advanced) lists them too — for an
+aero club, say. Flight mode is not affected: a registration typed into
+Flight Number is followed as asked.
+
 ## Where airport traffic is coming from and going to
 
-On the airport board, the line under each callsign says where that flight is
-from or going: **From MLE Malé** for an arrival, **To DEL Delhi** for a
-departure. Routes come from the same [adsbdb](https://www.adsbdb.com/) lookup
-as flight mode.
+Each board row says where the flight is from or going — **From IAH
+Houston**, **To HNL Honolulu**. Routes come from **OpenSky's own
+flight-route service**, the one behind its live map
+(`flightroutes.opensky-network.org/api/routeset`): free, no key, no
+credits, and batched, so one request answers the whole board. It is not part
+of OpenSky's documented REST API, so it may change without notice;
+[adsbdb](https://www.adsbdb.com/) is the fallback for the few flights it
+has nothing for.
 
-- A route is shown only if it really ends at this airport (for an arrival) or
-  starts here (for a departure). A callsign's usual route that doesn't touch
-  this airport is the wrong route for this trip, so the row shows the
-  aircraft's country instead — as it also does for private, military and
-  other callsigns adsbdb doesn't know.
-- Each callsign is looked up once and remembered on the screen for three
-  days (twelve hours if unknown). At most eight new lookups are made per
-  refresh, four at a time, for the rows nearest the top of the board.
-- City names are adsbdb's: Goa's airport, for example, is listed under its
-  town, Vasco da Gama.
+Routes are itineraries: a flight that stops here (SKW6274, LAX → SFO → LAX)
+has a leg in and a leg out, and the board uses the leg that lands here for
+an arrival, the one that leaves here for a departure. A route with no leg
+through this airport is not shown. If its leg ends or starts at a
+**neighbouring** airport instead (within 100 km: Gatwick, Luton, Stansted or
+City, seen from Heathrow), the flight is that airport's, not this one's — a
+descent into Gatwick looks like a descent into Heathrow from the map alone —
+so it is left off this board and its counts, and drawn as passing on the
+map.
+
+Rows with no usable route show the aircraft's country: private aircraft
+flying under their registration, military flights, and callsigns neither
+source knows.
+
+Each callsign is looked up once per airport and remembered on the screen
+for three days (twelve hours if unknown); up to 30 new callsigns per
+refresh in one OpenSky request, and at most four adsbdb fallbacks. City
+names come from the bundled airport table, which lists each airport's own
+town: Athens appears as Spata-Artemida.
 
 ## Route and estimated arrival (flight mode)
 
-OpenSky has positions but no schedules, so the route comes from
-[adsbdb](https://www.adsbdb.com/) (free, no key): the route an airline usually
-flies under that callsign. It is looked up once per callsign and cached.
+OpenSky's positions carry no route, so it comes from OpenSky's flight-route
+service (see above), using the leg of the itinerary the aircraft is actually
+on, with adsbdb as the fallback and for the airline's name. It is looked up
+once per callsign and cached.
 
 - The panel shows the two airports (`AMD Ahmedabad → PNQ Pune`), a progress
   bar, the estimated arrival time and the distance to go. The map pins both
@@ -236,13 +344,21 @@ the screenshotter's budget.
 - `src/states.ts` — the state-vector wire format, parsed and narrowed.
 - `src/map.ts` — the equirectangular map, markers and collision-free labels.
 - `src/panel.ts` — the glass panel for each mode.
-- `src/traffic.ts` — altitude bands and the arrival / departure heuristic: low,
-  descending and pointed at the field is an arrival; low, climbing and pointed
-  away is a departure.
+- `src/traffic.ts` — what each aircraft is doing (its colour), and the
+  arrival / departure heuristic: low, descending and pointed at the field is
+  an arrival; low, climbing and pointed away is a departure. Elsewhere,
+  vertical speed past ±300 ft/min is descending or climbing.
 - `src/lookup.ts` — airports and flight numbers.
 
 The map is the same public-domain Natural Earth outline as the Earthquake app,
-injected from `src/world.svg`. Every size is a multiple of one unit — a
+injected from `src/world.svg`, with Natural Earth's state and province
+boundaries for every country drawn over it as thinner dashed lines, so an
+inland view (Delhi, Madrid, Denver) still has landmarks. Those come from
+`src/states.json`, generated by `node scripts/generate-boundaries.mjs`:
+simplified to about 2 km, rounded to about 1 km, and cut into 10° tiles. The
+map draws only the tiles under its window — a few dozen lines rather than
+the world's 45,000 — and none in a whole-world view, where they would be
+noise. They add about 1.2 MB to the single-file build. Every size is a multiple of one unit — a
 hundredth of the screen's width, or of its height scaled to 16:9, whichever is
 smaller — so the layout fills any screen shape. In portrait the panel drops
 below the map. The build is folded into one self-contained `index.html` by

@@ -1,10 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 
+import { findAirport } from './lookup'
+
 import {
   cityOf,
   code,
   flightView,
+  legNow,
+  legsOf,
   parseRoute,
+  parseRouteset,
+  parseStops,
   plausible,
   progress,
 } from './route'
@@ -86,5 +92,50 @@ describe('flightView', () => {
       spanKm: 500,
     })
     expect(flightView([], { lat: 10, lng: 20 }, null).lat).toBe(10)
+  })
+})
+
+describe("OpenSky's flight-route service", () => {
+  const lookup = (code: string) => findAirport(code)
+
+  test('stops become legs, with names and cities', () => {
+    const legs = parseRouteset(
+      [
+        { callsign: 'SKW6274', airport_codes: 'KLAX-KSFO-KLAX', plausible: 1 },
+        { callsign: 'UAL1768', airport_codes: 'KIAH-KSFO', plausible: 1 },
+      ],
+      lookup,
+    )
+    expect(legs.UAL1768!.map((l) => `${code(l.from)}-${code(l.to)}`)).toEqual([
+      'IAH-SFO',
+    ])
+    expect(legs.SKW6274!.map((l) => `${code(l.from)}-${code(l.to)}`)).toEqual([
+      'LAX-SFO',
+      'SFO-LAX',
+    ])
+    expect(cityOf(legs.UAL1768![0]!.from)).toBe('Houston')
+  })
+
+  test('"unknown", junk and airports not in the table are no legs', () => {
+    const legs = parseRouteset(
+      [
+        { callsign: 'ZZZ9999', airport_codes: 'unknown', plausible: 0 },
+        { callsign: 'ODD1', airport_codes: 'KSFO-ZZZZ', plausible: 1 },
+        { airport_codes: 'KSFO-KLAX' },
+      ],
+      lookup,
+    )
+    expect(legs).toEqual({ ZZZ9999: [], ODD1: [] })
+    expect(parseRouteset('<html>', lookup)).toEqual({})
+    expect(parseStops('KSFO', lookup)).toEqual([])
+  })
+
+  test('the leg being flown now is the one the aircraft sits on', () => {
+    const legs = legsOf(parseStops('KLAX-KSFO-KSEA', lookup))
+    // Over Oregon, between SFO and Seattle.
+    const now = legNow(legs, { lat: 43.5, lng: -122.8 })
+    expect(now && `${code(now.from)}-${code(now.to)}`).toBe('SFO-SEA')
+    // Over London: neither leg.
+    expect(legNow(legs, { lat: 51.5, lng: -0.1 })).toBeNull()
   })
 })

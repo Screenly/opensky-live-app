@@ -1,67 +1,116 @@
 import { readEdgeAppCache, writeEdgeAppCache } from '@screenly/edge-apps'
 
-import { routeFor } from './opensky'
+import type { Airport } from './lookup'
+import { routeFor, routesFromOpenSky, type Aircraft } from './opensky'
 import type { Route } from './route'
+import { touches, type Routes } from './traffic'
 
 /*
-  Routes for the airport board, keyed by callsign. A callsign's usual route
-  changes rarely, so each is looked up once and kept on the screen for days;
-  "unknown" is kept too, for less long, so it is not asked about every
-  refresh. adsbdb is free and needs no key, but is a community service, so
-  lookups are few, small and bounded.
+  Routes for the airport board, keyed by callsign. OpenSky's own flight-route
+  service is asked first, in one batched request for the whole board; adsbdb
+  only for the few callsigns OpenSky has nothing for, or nothing that touches
+  this airport. A callsign's itinerary changes rarely, so each is looked up
+  once and kept on the screen for days; "unknown" is kept too, for less
+  long, so it is not asked about every refresh.
 */
 
 const CACHE_NAMESPACE = 'opensky-flight-map'
-const CACHE_KEY = 'routes'
+/** One table per airport. v2: itineraries as legs, from OpenSky first. */
+const cacheKey = (airport: Airport) => `routes-v2:${airport.icao}`
 const FOUND_MS = 3 * 24 * 60 * 60 * 1000
 const UNKNOWN_MS = 12 * 60 * 60 * 1000
 /** Entries kept at most; the oldest go first. */
 const MAX_ENTRIES = 400
-/** New lookups per refresh, and how many run at once. */
-const MAX_LOOKUPS = 8
-const AT_ONCE = 4
+/** New callsigns asked about per refresh: one OpenSky request's worth. */
+const MAX_LOOKUPS = 30
+/** adsbdb fallbacks per refresh, for what OpenSky could not place. */
+const MAX_FALLBACKS = 4
 
 interface Entry {
-  route: Route | null
+  legs: Route[]
   at: number
 }
 
 type Table = Record<string, Entry>
 
 function fresh(entry: Entry | undefined, now: number): entry is Entry {
-  if (!entry) return false
-  return now - entry.at < (entry.route ? FOUND_MS : UNKNOWN_MS)
+  if (!entry || !Array.isArray(entry.legs)) return false
+  return now - entry.at < (entry.legs.length ? FOUND_MS : UNKNOWN_MS)
+}
+
+const touchesAny = (airport: Airport, legs: Route[]) =>
+  legs.some((leg) => touches(airport, leg))
+
+/**
+ * Looks up the callsigns not already known: OpenSky for all of them at once,
+ * then adsbdb for a few of those OpenSky could not tie to this airport.
+ */
+async function lookUp(
+  aircraft: Aircraft[],
+  airport: Airport,
+): Promise<Record<string, Route[]>> {
+  const planes = aircraft.map((a) => ({
+    callsign: a.callsign.trim().toUpperCase(),
+    lat: a.lat,
+    lng: a.lng,
+  }))
+  const opensky = await routesFromOpenSky(planes)
+  const found: Record<string, Route[]> = {}
+  const unplaced: string[] = []
+  for (const { callsign } of planes) {
+    const legs = opensky[callsign] ?? []
+    found[callsign] = legs
+    if (!touchesAny(airport, legs)) unplaced.push(callsign)
+  }
+  const fallbacks = await Promise.all(
+    unplaced.slice(0, MAX_FALLBACKS).map((c) => routeFor(c)),
+  )
+  unplaced.slice(0, MAX_FALLBACKS).forEach((callsign, i) => {
+    const route = fallbacks[i]
+    // adsbdb only replaces OpenSky's answer if it does better: touches here,
+    // or OpenSky had nothing at all.
+    if (route && (touches(airport, route) || found[callsign]!.length === 0)) {
+      found[callsign] = [route]
+    }
+  })
+  return found
 }
 
 /**
- * The routes for these callsigns, nearest first: from the screen's own table
- * where known, otherwise looked up (at most a few per refresh). A callsign
- * with no known route maps to null.
+ * The itineraries for these aircraft, from the screen's own table where
+ * known, otherwise looked up. A callsign with no known route maps to [].
  */
 export async function routesFor(
-  callsigns: string[],
-): Promise<Record<string, Route | null>> {
+  aircraft: Aircraft[],
+  airport: Airport,
+): Promise<Routes> {
   const now = Date.now()
-  const table = readEdgeAppCache<Table>(CACHE_NAMESPACE, CACHE_KEY) ?? {}
-  const wanted = [...new Set(callsigns.filter(Boolean))]
-  const missing = wanted.filter((c) => !fresh(table[c], now))
+  const key = cacheKey(airport)
+  const table = readEdgeAppCache<Table>(CACHE_NAMESPACE, key) ?? {}
+  const callsignOf = (a: Aircraft) => a.callsign.trim().toUpperCase()
+  const wanted = aircraft.filter(
+    (a, i, all) =>
+      callsignOf(a) !== '' &&
+      all.findIndex((b) => callsignOf(b) === callsignOf(a)) === i,
+  )
+  const missing = wanted
+    .filter((a) => !fresh(table[callsignOf(a)], now))
+    .slice(0, MAX_LOOKUPS)
 
-  const lookups = missing.slice(0, MAX_LOOKUPS)
-  for (let i = 0; i < lookups.length; i += AT_ONCE) {
-    const batch = lookups.slice(i, i + AT_ONCE)
-    const found = await Promise.all(batch.map((c) => routeFor(c)))
-    batch.forEach((c, j) => (table[c] = { route: found[j] ?? null, at: now }))
-  }
-
-  if (lookups.length > 0) {
+  if (missing.length > 0) {
+    const found = await lookUp(missing, airport)
+    for (const [callsign, legs] of Object.entries(found)) {
+      table[callsign] = { legs, at: now }
+    }
     const kept = Object.entries(table)
       .filter(([, entry]) => fresh(entry, now))
       .sort(([, a], [, b]) => b.at - a.at)
       .slice(0, MAX_ENTRIES)
-    writeEdgeAppCache(CACHE_NAMESPACE, CACHE_KEY, Object.fromEntries(kept))
+    writeEdgeAppCache(CACHE_NAMESPACE, key, Object.fromEntries(kept))
   }
 
-  const result: Record<string, Route | null> = {}
-  for (const c of wanted) result[c] = table[c]?.route ?? null
+  const result: Routes = {}
+  for (const a of wanted)
+    result[callsignOf(a)] = table[callsignOf(a)]?.legs ?? []
   return result
 }

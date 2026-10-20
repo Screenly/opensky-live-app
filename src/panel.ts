@@ -1,46 +1,67 @@
 import { escapeHtml } from '@screenly/edge-apps'
 
+import { renderBoard } from './board'
 import { airborne } from './data'
-import type { Formatter, Units } from './format'
+import type { Formatter } from './format'
 import { bearing, compass, kmBetween } from './geo'
-import { shortAirportName, type Airport, type FlightQuery } from './lookup'
+import {
+  isPublicCallsign,
+  shortAirportName,
+  type Airport,
+  type FlightQuery,
+} from './lookup'
 import type { Aircraft } from './opensky'
 import { progress, type Route } from './route'
 import { routeHtml } from './route-view'
-import { band, board, phaseAt, routeLine, type Phase } from './traffic'
+import { board, phaseAt, type Motion, type Phase, type Routes } from './traffic'
 
 interface Fact {
   label: string
   value: [string, string]
   className?: string
+  /** A colour key beside the label; the number itself stays in ink. */
+  marker?: Motion
 }
 
 interface Row {
   aircraft: Aircraft
-  chip?: Phase
   far: [string, string]
   /** The line under the callsign; the country when not given. */
   sub?: string
 }
 
-const CHIP_TEXT: Record<Phase, string> = { arr: 'ARR', dep: 'DEP', gnd: 'GND' }
+/*
+  Colour means what an aircraft is doing, everywhere on the screen: the list
+  icons, the map, the board's section keys and the legend all use the same
+  four, and a word and arrow always say it too, so colour is never the only
+  cue.
+*/
+const LEGEND: Record<'airport' | 'sky', Record<Motion, string>> = {
+  airport: {
+    arr: '↘ Arriving',
+    dep: '↗ Departing',
+    pass: '→ Passing',
+    gnd: 'Ground',
+  },
+  sky: {
+    arr: '↘ Descending',
+    dep: '↗ Climbing',
+    pass: '→ Level',
+    gnd: 'Ground',
+  },
+}
 const NONE: [string, string] = ['—', '']
 
 function $(id: string): HTMLElement {
   return document.getElementById(id)!
 }
 
-/** The altitude legend, written in the units the rest of the screen uses. */
-export function legend(units: Units): void {
-  const labels: Record<Units, [string, string, string]> = {
-    aviation: ['Below FL100', 'FL100–300', 'Above FL300'],
-    imperial: ['< 10k ft', '10–30k ft', '> 30k ft'],
-    metric: ['< 3 km', '3–9 km', '> 9 km'],
+/** The colour legend: arriving/departing at an airport, else by vertical speed. */
+export function legend(atAirport: boolean): void {
+  const labels = LEGEND[atAirport ? 'airport' : 'sky']
+  for (const motion of Object.keys(labels) as Motion[]) {
+    $(`band-${motion}`).textContent = labels[motion]
   }
-  const [low, mid, high] = labels[units]
-  $('band-low').textContent = low
-  $('band-mid').textContent = mid
-  $('band-high').textContent = high
 }
 
 /**
@@ -54,6 +75,12 @@ export class Panel {
     private glyph: string,
   ) {}
 
+  /** Whether private aircraft (registration callsigns) may be listed. */
+  includePrivate = false
+
+  /** How each aircraft is coloured; set once the mode is known. */
+  motion: (aircraft: Aircraft) => Motion = () => 'pass'
+
   private head(label: string, big: string, sub: string): void {
     $('head-label').textContent = label
     $('head-big').textContent = big
@@ -66,29 +93,27 @@ export class Panel {
     const el = $('facts')
     el.style.setProperty('--columns', String(columns))
     el.innerHTML = facts
-      .map(({ label, value: [value, unit], className }) => {
+      .map(({ label, value: [value, unit], className, marker }) => {
         const small = unit ? `<small>${escapeHtml(unit)}</small>` : ''
+        const key = marker ? `<span class="key ${marker}"></span>` : ''
         return (
-          `<div class="fact"><div class="label">${escapeHtml(label)}</div>` +
+          `<div class="fact"><div class="label">${key}${escapeHtml(label)}</div>` +
           `<div class="v ${className ?? ''}">${escapeHtml(value)}${small}</div></div>`
         )
       })
       .join('')
   }
 
-  private row({ aircraft, chip, far: [far, farUnit], sub }: Row): string {
+  private row({ aircraft, far: [far, farUnit], sub }: Row): string {
     const [alt, altUnit] = this.fmt.altitude(
       aircraft.altitude,
       aircraft.onGround,
     )
     const name = aircraft.callsign || aircraft.icao24.toUpperCase()
-    const chipHtml = chip
-      ? `<span class="chip ${chip}">${CHIP_TEXT[chip]}</span>`
-      : ''
     return (
-      `<li class="row ${band(aircraft)}" data-icao24="${escapeHtml(aircraft.icao24)}">` +
+      `<li class="row ${this.motion(aircraft)}" data-icao24="${escapeHtml(aircraft.icao24)}">` +
       `<div class="icon" style="transform: rotate(${aircraft.track}deg)">${this.glyph}</div>` +
-      `<div class="who"><b>${chipHtml}${escapeHtml(name)}</b><span>${escapeHtml(sub ?? aircraft.country)}</span></div>` +
+      `<div class="who"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub ?? aircraft.country)}</span></div>` +
       `<div class="num">${escapeHtml(alt)}<small>${escapeHtml(altUnit || 'alt')}</small></div>` +
       `<div class="num">${escapeHtml(far)}<small>${escapeHtml(farUnit)}</small></div>` +
       `</li>`
@@ -157,11 +182,13 @@ export class Panel {
     ])
     return this.rows(
       'Closest to this screen',
-      drawn.map((aircraft) => {
-        const [value, unit] = this.distance(lat, lng, aircraft)
-        const way = compass(bearing(lat, lng, aircraft.lat, aircraft.lng))
-        return { aircraft, far: [value, `${unit} ${way}`] }
-      }),
+      drawn
+        .filter((a) => this.listable(a))
+        .map((aircraft) => {
+          const [value, unit] = this.distance(lat, lng, aircraft)
+          const way = compass(bearing(lat, lng, aircraft.lat, aircraft.lng))
+          return { aircraft, far: [value, `${unit} ${way}`] }
+        }),
       'The sky is clear right now',
     )
   }
@@ -170,49 +197,46 @@ export class Panel {
     airport: Airport,
     radiusKm: number,
     drawn: Aircraft[],
-    routes: Record<string, Route | null> = {},
+    routes: Routes = {},
   ): Set<string> {
-    const phases = new Map<string, Phase>()
-    for (const aircraft of drawn) {
-      const phase = phaseAt(airport, aircraft, radiusKm)
-      if (phase) phases.set(aircraft.icao24, phase)
-    }
+    // Arriving and departing as the board has them (a neighbouring
+    // airport's traffic, proved by its route, is left out); ground near here.
+    const listed = board(airport, drawn, radiusKm, routes, this.includePrivate)
     const count = (phase: Phase) =>
-      [...phases.values()].filter((p) => p === phase).length
+      phase === 'gnd'
+        ? drawn.filter((a) => phaseAt(airport, a, radiusKm) === 'gnd').length
+        : listed.filter((e) => e.phase === phase).length
 
     this.head(
       [airport.iata, airport.icao].filter(Boolean).join(' · '),
       shortAirportName(airport),
       `${airport.city ? `${airport.city} · ` : ''}${this.fmt.radius(radiusKm)} around`,
     )
-    this.facts([
-      {
-        label: 'Arriving',
-        value: [String(count('arr')), ''],
-        className: 'arr',
-      },
-      {
-        label: 'Departing',
-        value: [String(count('dep')), ''],
-        className: 'dep',
-      },
-      { label: 'On ground', value: [String(count('gnd')), ''] },
-    ])
-
-    return this.rows(
-      'Arriving & departing',
-      board(airport, drawn, radiusKm).map(({ aircraft, phase }) => {
-        const [value, unit] = this.distance(airport.lat, airport.lng, aircraft)
-        const far: [string, string] = [
-          value,
-          phase === 'arr' ? `${unit} out` : `${unit} away`,
-        ]
-        const route = routes[aircraft.callsign.toUpperCase()]
-        const sub = routeLine(airport, phase, route) ?? undefined
-        return { aircraft, chip: phase, far, sub }
-      }),
-      'No arrivals or departures in range right now',
+    this.facts(
+      [
+        { label: 'Arriving', value: [String(count('arr')), ''], marker: 'arr' },
+        {
+          label: 'Departing',
+          value: [String(count('dep')), ''],
+          marker: 'dep',
+        },
+        {
+          label: 'Ground',
+          value: [String(count('gnd')), ''],
+          marker: 'gnd',
+        },
+      ],
+      3,
     )
+
+    // The sections carry their own headings.
+    $('list-label').textContent = ''
+    return renderBoard($('list'), this.fmt, this.glyph, airport, listed, routes)
+  }
+
+  /** Private aircraft are drawn on the map, but listed only if asked for. */
+  private listable(aircraft: Aircraft): boolean {
+    return this.includePrivate || isPublicCallsign(aircraft.callsign)
   }
 
   /** Hides the route line; only a followed flight with a known route shows it. */

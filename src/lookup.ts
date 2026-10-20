@@ -93,3 +93,15 @@ function iataCallsigns(compact: string): string[] {
   const trimmed = number!.replace(/^0+(?=\d)/, '')
   return designators.map((icao) => `${icao}${trimmed}`)
 }
+
+/**
+ * Is this a public flight's callsign? Airlines (and charter and cargo
+ * operators) fly under a three-letter code and a number: UAL1050, SKW425X,
+ * EZY37BK. Private aircraft fly under their registration — N780SP, OEELK —
+ * which identifies the owner, and those are kept off public lists. The shape
+ * is the test, not a table of airline codes: the bundled table is missing
+ * real airlines (Breeze, JSX), and a stale table would hide their flights.
+ */
+export function isPublicCallsign(callsign: string): boolean {
+  return /^[A-Z]{3}\d[0-9A-Z]{0,3}$/.test(callsign.trim().toUpperCase())
+}

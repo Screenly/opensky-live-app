@@ -37,6 +37,7 @@ import {
 import { legend, Panel } from './panel'
 import { resolveLocale, resolvePosition } from './place'
 import { resolvePlan } from './plan'
+import { motionOf } from './traffic'
 import { ready } from './ready'
 import worldSvg from './world.svg?raw'
 
@@ -68,6 +69,15 @@ function say(id: string, text: string): void {
 }
 
 const locate = (aircraft: Aircraft) => positionOf(current, aircraft)
+
+/** What each aircraft is doing, which is the colour it wears. */
+const motion = (aircraft: Aircraft) =>
+  motionOf(
+    aircraft,
+    plan?.mode === 'airport' ? plan.airport : null,
+    radiusKm,
+    current?.routes,
+  )
 
 /** What the panels leave clear; the map's focus sits in the middle of it. */
 const clearArea = () => clearAreaOf(stage)
@@ -119,7 +129,7 @@ function draw(): void {
         : plan.airport.iata || plan.airport.icao,
     )
   }
-  view.render(drawn, locate, labelled, current.target, fmt)
+  view.render(drawn, locate, labelled, current.target, fmt, motion)
   tick()
 }
 
@@ -328,7 +338,6 @@ async function boot(): Promise<void> {
   const units = resolveUnits(getSettingWithDefault<string>('units', 'aviation'))
   fmt = new Formatter(units, resolveLocale())
   panel = new Panel(fmt, glyph)
-  legend(units)
 
   const radius = getSettingWithDefault<number>('radius_km', 100)
   radiusKm = Number.isFinite(radius) ? Math.min(Math.max(radius, 10), 400) : 100
@@ -341,6 +350,9 @@ async function boot(): Promise<void> {
   // A setting to fix: shown, so an operator sees it.
   if (!plan) return ready()
   stage.dataset.mode = plan.mode
+  panel.motion = motion
+  panel.includePrivate = getSettingWithDefault<boolean>('show_private', false)
+  legend(plan.mode === 'airport')
   if (credentials() === 'partial') {
     notice(CREDENTIALS_PARTIAL)
     return ready()

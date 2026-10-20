@@ -1,10 +1,12 @@
 import { escapeHtml } from '@screenly/edge-apps'
 
 import type { Formatter } from './format'
+import { thinGround, type Spot } from './ground'
 import { KM_PER_DEGREE, nearLongitude, RADIANS } from './geo'
 import type { Aircraft, Waypoint } from './opensky'
 import { code, type Route } from './route'
-import { band } from './traffic'
+import stateTiles from './states.json'
+import type { Motion } from './traffic'
 
 export interface Area {
   x: number
@@ -75,6 +77,33 @@ export class MapView {
       `${this.west} ${-this.north} ${this.east - this.west} ${this.north - this.south}`,
     )
     this.graticule()
+    this.states()
+  }
+
+  /**
+   * State and province boundaries, from the 10° tiles under the window only:
+   * a few dozen lines to draw rather than the world's 45,000. A whole-world
+   * view gets none — at that scale they are noise. Tiles past the
+   * antimeridian are not wrapped, so a view across it loses the far side's.
+   */
+  private states(): void {
+    const tile = 10
+    const widest = 60
+    const { west, east, north, south } = this
+    let d = ''
+    if (east - west <= widest) {
+      const tiles = stateTiles as Record<string, string>
+      for (let lng = Math.floor(west / tile) * tile; lng < east; lng += tile) {
+        for (
+          let lat = Math.floor(south / tile) * tile;
+          lat < north;
+          lat += tile
+        ) {
+          d += tiles[`${lng},${lat}`] ?? ''
+        }
+      }
+    }
+    this.path('states', d)
   }
 
   private graticule(): void {
@@ -176,6 +205,7 @@ export class MapView {
     labelled: Set<string>,
     target: string | null,
     fmt: Formatter,
+    motion: (aircraft: Aircraft) => Motion,
   ): void {
     const keep = new Set<string>()
     for (const aircraft of drawn) {
@@ -192,7 +222,7 @@ export class MapView {
       }
       const isTarget = aircraft.icao24 === target
       const isHot = isTarget || labelled.has(aircraft.icao24)
-      marker.className = `plane ${band(aircraft)}${isHot ? ' hot' : ''}${isTarget ? ' target' : ''}`
+      marker.className = `plane ${motion(aircraft)}${isHot ? ' hot' : ''}${isTarget ? ' target' : ''}`
       const glyph = marker.firstElementChild as HTMLElement
       glyph.style.transform = `rotate(${aircraft.track}deg)`
       const tag = marker.lastElementChild as HTMLElement
@@ -221,11 +251,15 @@ export class MapView {
     ).map(rectOf)
     const tags: Array<{ tag: HTMLElement; x: number; y: number; r: number }> =
       []
+    const onGround: Spot[] = []
     for (const aircraft of drawn) {
       const marker = this.markers.get(aircraft.icao24)
       if (!marker) continue
       const [x, y] = this.move(marker, locate(aircraft))
-      if (!marker.classList.contains('hot')) continue
+      const hot = marker.classList.contains('hot')
+      if (aircraft.onGround && !hot)
+        onGround.push({ id: aircraft.icao24, x, y })
+      if (!hot) continue
       const r = (marker.firstElementChild as HTMLElement).offsetWidth / 2
       taken.push({ left: x - r, top: y - r, right: x + r, bottom: y + r })
       const tag = marker.lastElementChild as HTMLElement
@@ -260,6 +294,8 @@ export class MapView {
         bottom: y + dy + h,
       })
     }
+    // Ground icons closer than one icon's width overlap.
+    thinGround(onGround, this.markers, 1.7 * rem)
   }
 
   private move(

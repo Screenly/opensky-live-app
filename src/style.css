@@ -16,6 +16,7 @@
       text, 3:1 for components, over both sea and land. Change one, run it.
     */
     --coast: rgba(132, 162, 204, 0.62);
+    --state: rgba(132, 162, 204, 0.64);
     --grid: rgba(132, 162, 204, 0.07);
     --ink: #eef2f8;
     --ink-soft: rgba(238, 242, 248, 0.72);
@@ -25,12 +26,16 @@
     --glass-edge: rgba(255, 255, 255, 0.08);
     --halo: rgba(7, 11, 20, 0.85);
 
-    /* Altitude bands. Every aircraft is coloured by how high it is. */
+    /*
+      What an aircraft is doing — one colour per meaning, the same hue in both
+      themes: arriving (or descending), departing (or climbing), passing
+      through (or level), on the ground. Chosen with the dataviz validator:
+      colour-blind ΔE 12 / normal 20.5 here, all pairs, accent included.
+    */
+    --arr: #cc7200;
+    --dep: #7ac869;
+    --pass: #a6e1fe;
     --gnd: #8f98a8;
-    --low: #ffb547;
-    --mid: #3ddc97;
-    --high: #5cc8ff;
-    --warn: #ffb547;
     --danger: #ff8f80;
   }
 
@@ -40,6 +45,7 @@
     --sea: #f3f1ec;
     --land: #e6e2d9;
     --coast: rgba(22, 24, 27, 0.62);
+    --state: rgba(22, 24, 27, 0.52);
     --grid: rgba(22, 24, 27, 0.07);
     --ink: #16181b;
     --ink-soft: rgba(22, 24, 27, 0.78);
@@ -49,11 +55,11 @@
     --glass-edge: rgba(22, 24, 27, 0.1);
     --halo: rgba(243, 241, 236, 0.9);
 
+    /* Colour-blind ΔE 9.5 / normal 17.9, all pairs, accent included. */
+    --arr: #6b3903;
+    --dep: #297613;
+    --pass: #055e7c;
     --gnd: #5a606b;
-    --low: #a14a07;
-    --mid: #036b4e;
-    --high: #1d4ed8;
-    --warn: #a14a07;
     --danger: #b42318;
   }
 
@@ -120,6 +126,19 @@
     fill: var(--land);
     stroke: var(--coast);
     stroke-width: 1.6;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /*
+    State and province lines: as legible as the coast (AA 3:1 on land), but
+    thinner and dashed, so they read as a lesser boundary than a country's.
+  */
+  #states {
+    fill: none;
+    stroke: var(--state);
+    stroke-width: 1.1;
+    stroke-dasharray: 5 4;
+    stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
   }
 
@@ -268,19 +287,22 @@
   .plane {
     z-index: 1;
     --size: 1.7rem;
-    --band: var(--mid);
+    --band: var(--pass);
     /* Matches the 1 s tick, so dead-reckoned aircraft glide rather than hop. */
     transition: transform 1s linear;
   }
 
+  .plane.arr {
+    --band: var(--arr);
+  }
+  .plane.dep {
+    --band: var(--dep);
+  }
+  .plane.pass {
+    --band: var(--pass);
+  }
   .plane.gnd {
     --band: var(--gnd);
-  }
-  .plane.low {
-    --band: var(--low);
-  }
-  .plane.high {
-    --band: var(--high);
   }
 
   .plane .glyph {
@@ -297,6 +319,11 @@
     fill: var(--band);
     opacity: 0.8;
     filter: drop-shadow(0 0 0.15rem var(--halo));
+  }
+
+  /* More than two overlapping on the ground: only two are drawn. */
+  .plane.grouped {
+    display: none;
   }
 
   .plane.hot {
@@ -419,9 +446,10 @@
     box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--accent) 25%, transparent);
   }
 
+  /* Stale: a hollow dot, plus the words "Showing 12:04 — …" beside it. */
   .live.stale {
-    background: var(--warn);
-    box-shadow: 0 0 0 0.3rem color-mix(in srgb, var(--warn) 25%, transparent);
+    background: transparent;
+    box-shadow: inset 0 0 0 0.15rem var(--ink-muted);
   }
 
   /* ---------- Panel ---------- */
@@ -579,13 +607,6 @@
     color: var(--ink-muted);
   }
 
-  .fact .v.arr {
-    color: var(--low);
-  }
-  .fact .v.dep {
-    color: var(--mid);
-  }
-
   .list-label:empty {
     display: none;
   }
@@ -610,6 +631,36 @@
     border-bottom: 0.1rem solid var(--rule);
   }
 
+  /* The airport board: Arrivals and Departures, each row a flight and a time. */
+  .list .section {
+    display: flex;
+    align-items: center;
+    padding: 1.1rem 0 0.2rem;
+    font-size: 1rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+  }
+
+  .list .section:first-child {
+    padding-top: 0.4rem;
+  }
+
+  .row.board {
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+  }
+
+  .row.empty .who > span {
+    font-size: 1.2rem;
+  }
+
+  /* Times and words ("Landing"), not figures: the reading typeface. */
+  .row .num.when {
+    font-family: system-ui, 'DejaVu Sans', sans-serif;
+    font-size: 1.7rem;
+    font-weight: 600;
+  }
+
   .row:last-child {
     border-bottom: 0;
   }
@@ -623,20 +674,21 @@
     display: block;
     width: 100%;
     height: 100%;
-    fill: var(--band, var(--mid));
+    fill: var(--band, var(--pass));
   }
 
-  .row.gnd {
+  /* One rule sets --band for every coloured thing: plane, row, key. */
+  .arr {
+    --band: var(--arr);
+  }
+  .dep {
+    --band: var(--dep);
+  }
+  .pass {
+    --band: var(--pass);
+  }
+  .gnd {
     --band: var(--gnd);
-  }
-  .row.low {
-    --band: var(--low);
-  }
-  .row.mid {
-    --band: var(--mid);
-  }
-  .row.high {
-    --band: var(--high);
   }
 
   .row .who {
@@ -679,25 +731,15 @@
     color: var(--ink-muted);
   }
 
-  .chip {
+  /* The colour key beside a count's label; the number stays in ink. */
+  .key {
     display: inline-block;
-    margin-right: 0.5rem;
-    padding: 0.1rem 0.45rem;
-    border-radius: 0.35rem;
-    font-family: system-ui, 'DejaVu Sans', sans-serif;
-    font-size: 0.85rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    vertical-align: 0.2rem;
-    color: var(--sea);
-    background: var(--ink-soft);
-  }
-
-  .chip.arr {
-    background: var(--low);
-  }
-  .chip.dep {
-    background: var(--mid);
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-right: 0.55rem;
+    border-radius: 50%;
+    vertical-align: -0.05rem;
+    background: var(--band);
   }
 
   /* ---------- Status ---------- */
@@ -729,26 +771,13 @@
     background: var(--band);
   }
 
-  .band.gnd {
-    --band: var(--gnd);
-  }
-  .band.low {
-    --band: var(--low);
-  }
-  .band.mid {
-    --band: var(--mid);
-  }
-  .band.high {
-    --band: var(--high);
-  }
-
   .updated {
     font-size: 1rem;
     color: var(--ink-muted);
   }
 
   .updated.stale {
-    color: var(--warn);
+    color: var(--ink-soft);
   }
 
   /* ---------- Notice: nothing to plot ---------- */

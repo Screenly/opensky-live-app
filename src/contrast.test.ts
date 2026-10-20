@@ -61,12 +61,7 @@ const PAIRS: Pair[] = [
     fg: 'accent-tint',
     on: 'glass',
   },
-  { what: 'arriving count', kind: 'text', fg: 'low', on: 'glass' },
-  { what: 'departing count', kind: 'text', fg: 'mid', on: 'glass' },
-  { what: 'stale status', kind: 'text', fg: 'warn', on: 'glass' },
-  { what: 'ARR chip text', kind: 'text', fg: 'sea', on: 'low' },
-  { what: 'DEP chip text', kind: 'text', fg: 'sea', on: 'mid' },
-  { what: 'GND chip text', kind: 'text', fg: 'sea', on: 'ink-soft@glass' },
+  { what: 'stale status', kind: 'text', fg: 'ink-soft', on: 'glass' },
 
   // Map labels have a glass backing, which the glass rows above already
   // cover; they are also held to AA over the bare map, so they still pass if
@@ -102,35 +97,14 @@ const PAIRS: Pair[] = [
   },
   { what: 'what was typed', kind: 'text', fg: 'danger', on: 'glass@notice' },
 
-  // Aircraft on the map, coloured by altitude band.
-  {
-    what: 'aircraft below FL100',
+  // Aircraft on the map, coloured by what they are doing (at 80% opacity).
+  ...(['arr', 'dep', 'pass', 'gnd'] as const).map((motion): Pair => ({
+    what: `${motion} aircraft on the map`,
     kind: 'non-text',
-    fg: 'low',
+    fg: motion,
     opacity: 0.8,
     on: 'map',
-  },
-  {
-    what: 'aircraft FL100–300',
-    kind: 'non-text',
-    fg: 'mid',
-    opacity: 0.8,
-    on: 'map',
-  },
-  {
-    what: 'aircraft above FL300',
-    kind: 'non-text',
-    fg: 'high',
-    opacity: 0.8,
-    on: 'map',
-  },
-  {
-    what: 'aircraft on the ground',
-    kind: 'non-text',
-    fg: 'gnd',
-    opacity: 0.8,
-    on: 'map',
-  },
+  })),
   { what: 'followed aircraft', kind: 'non-text', fg: 'accent-tint', on: 'map' },
 
   // Other map marks that carry meaning.
@@ -158,14 +132,23 @@ const PAIRS: Pair[] = [
   },
   { what: 'path still to fly', kind: 'non-text', fg: 'ink-muted', on: 'map' },
   { what: 'coastline', kind: 'non-text', fg: 'coast', on: 'sea' },
+  { what: 'state boundary', kind: 'non-text', fg: 'state', on: 'land' },
 
   // Components in the panels.
-  { what: 'list icon below FL100', kind: 'non-text', fg: 'low', on: 'glass' },
-  { what: 'list icon FL100–300', kind: 'non-text', fg: 'mid', on: 'glass' },
-  { what: 'list icon above FL300', kind: 'non-text', fg: 'high', on: 'glass' },
-  { what: 'legend dot ground', kind: 'non-text', fg: 'gnd', on: 'glass' },
+  // List icons, legend dots and count keys, on the glass panels.
+  ...(['arr', 'dep', 'pass', 'gnd'] as const).map((motion): Pair => ({
+    what: `${motion} icon, legend dot and key`,
+    kind: 'non-text',
+    fg: motion,
+    on: 'glass',
+  })),
   { what: 'live dot', kind: 'non-text', fg: 'accent', on: 'glass' },
-  { what: 'stale dot', kind: 'non-text', fg: 'warn', on: 'glass' },
+  {
+    what: 'stale (hollow) dot',
+    kind: 'non-text',
+    fg: 'ink-muted',
+    on: 'glass',
+  },
   { what: 'route progress', kind: 'non-text', fg: 'accent-tint', on: 'glass' },
 ]
 
@@ -179,6 +162,8 @@ function backdrops(t: Record<string, Rgba>, on: string): Rgba[] {
       return map
     case 'sea':
       return [sea]
+    case 'land':
+      return [land]
     case 'glass':
       return map.map((m) => over(t.glass!, m))
     case 'notice':
@@ -186,8 +171,6 @@ function backdrops(t: Record<string, Rgba>, on: string): Rgba[] {
       return [sea, over(land, sea, 0.35)]
     case 'glass@notice':
       return [sea, over(land, sea, 0.35)].map((m) => over(t.glass!, m))
-    case 'ink-soft@glass':
-      return map.map((m) => over(t['ink-soft']!, over(t.glass!, m)))
     default:
       return map.map((m) => over(t[on]!, m))
   }

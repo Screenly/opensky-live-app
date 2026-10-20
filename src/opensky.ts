@@ -1,7 +1,8 @@
 import { getSettingWithDefault } from '@screenly/edge-apps'
 
 import type { Box } from './geo'
-import { parseRoute, type Route } from './route'
+import { findAirport } from './lookup'
+import { parseRoute, parseRouteset, type Route } from './route'
 import { parseStates, type Snapshot, type Waypoint } from './states'
 
 export type { Aircraft, Snapshot, Waypoint } from './states'
@@ -212,4 +213,39 @@ export async function routeFor(callsign: string): Promise<Route | null> {
     console.warn('No route for', callsign, error)
     return null
   }
+}
+
+/** Callsigns asked about in one request to OpenSky's route service. */
+const ROUTESET_BATCH = 30
+
+/**
+ * Routes from OpenSky's flight-route service — the one behind its own live
+ * map (map.opensky-network.org), not part of the documented REST API, so it
+ * may change without notice. Free, no key, no credits, and batched: one
+ * request answers a whole board. Each callsign maps to its itinerary as
+ * legs; [] means OpenSky does not know it. A callsign missing from the
+ * result (any failure) has no answer, and the caller falls back.
+ */
+export async function routesFromOpenSky(
+  planes: Array<{ callsign: string; lat?: number; lng?: number }>,
+): Promise<Record<string, Route[]>> {
+  const found: Record<string, Route[]> = {}
+  for (let i = 0; i < planes.length; i += ROUTESET_BATCH) {
+    try {
+      const response = await fetch(
+        proxied('https://flightroutes.opensky-network.org/api/routeset'),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planes: planes.slice(i, i + ROUTESET_BATCH) }),
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        },
+      )
+      if (!response.ok) continue
+      Object.assign(found, parseRouteset(await response.json(), findAirport))
+    } catch (error) {
+      console.warn('OpenSky route service failed', error)
+    }
+  }
+  return found
 }

@@ -140,3 +140,76 @@ export function flightView(
   }
   return { ...at, spanKm: Math.min(Math.max(farthest * 1.4, 500), WIDEST_KM) }
 }
+
+/**
+ * Stops as OpenSky's flight-route service writes them: ICAO codes joined by
+ * dashes, "KLAX-KSFO-KLAX" for a flight that stops at SFO on its way back to
+ * LAX, or "unknown". Each stop is looked up in the bundled airport table for
+ * its name, city and position; one that is not there (a small field) means
+ * no route, as there is nothing to show or check.
+ */
+export function parseStops(
+  codes: string,
+  airportByCode: (code: string) => RoutePlace | null,
+): RoutePlace[] {
+  const parts = codes.trim().toUpperCase().split('-')
+  if (parts.length < 2 || parts.some((c) => !/^[A-Z0-9]{4}$/.test(c))) {
+    return []
+  }
+  const stops = parts.map(airportByCode)
+  return stops.every((s): s is RoutePlace => s !== null) ? stops : []
+}
+
+/** Consecutive stops as legs: LAX-SFO-LAX is LAX → SFO, then SFO → LAX. */
+export function legsOf(stops: RoutePlace[], airline = ''): Route[] {
+  const legs: Route[] = []
+  for (let i = 1; i < stops.length; i++) {
+    if (stops[i - 1]!.icao !== stops[i]!.icao) {
+      legs.push({ airline, from: stops[i - 1]!, to: stops[i]! })
+    }
+  }
+  return legs
+}
+
+/** One answer per callsign from OpenSky's route service, as legs. */
+export function parseRouteset(
+  value: unknown,
+  airportByCode: (code: string) => RoutePlace | null,
+): Record<string, Route[]> {
+  const found: Record<string, Route[]> = {}
+  if (!Array.isArray(value)) return found
+  for (const item of value) {
+    const { callsign, airport_codes } = (item ?? {}) as Record<string, unknown>
+    if (typeof callsign !== 'string' || typeof airport_codes !== 'string') {
+      continue
+    }
+    found[callsign.trim().toUpperCase()] = legsOf(
+      parseStops(airport_codes, airportByCode),
+    )
+  }
+  return found
+}
+
+/**
+ * The leg of an itinerary this aircraft is plausibly flying now — the one it
+ * sits between with the least detour — or null if it fits none.
+ */
+export function legNow(
+  legs: Route[],
+  at: { lat: number; lng: number },
+): Route | null {
+  let best: Route | null = null
+  let detour = Infinity
+  for (const leg of legs) {
+    if (!plausible(leg, at)) continue
+    const via =
+      kmBetween(leg.from.lat, leg.from.lng, at.lat, at.lng) +
+      kmBetween(at.lat, at.lng, leg.to.lat, leg.to.lng) -
+      kmBetween(leg.from.lat, leg.from.lng, leg.to.lat, leg.to.lng)
+    if (via < detour) {
+      best = leg
+      detour = via
+    }
+  }
+  return best
+}

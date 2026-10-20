@@ -5,6 +5,9 @@ export function resolveUnits(value: string): Units {
 }
 
 const FEET_PER_METRE = 3.28084
+/** Below these, an airborne altitude is "<100 ft" / "<30 m", not a number. */
+const LOW_FT = 100
+const LOW_M = 30
 
 export class Formatter {
   constructor(
@@ -20,13 +23,22 @@ export class Formatter {
   }
 
   /** Altitude as a value and its unit, so the two can be styled apart. */
+  /**
+   * Altitude as a value and its unit. OpenSky's altitude is pressure
+   * altitude (from air pressure, assuming a standard day), not height above
+   * the ground: an aircraft on short final, or on a high-pressure day, can
+   * read 0 or even below sea level while still airborne. Anything under
+   * 100 ft (30 m) is written as just that, never as "0" or a negative.
+   */
   altitude(metres: number | null, onGround = false): [string, string] {
     if (onGround) return ['GND', '']
     if (metres === null) return ['—', '']
     if (this.units === 'metric') {
+      if (metres < LOW_M) return [`<${LOW_M}`, 'm']
       return [this.number(Math.round(metres / 10) * 10), 'm']
     }
     const feet = metres * FEET_PER_METRE
+    if (feet < LOW_FT) return [`<${LOW_FT}`, 'ft']
     // Above 18,000 ft pilots speak in flight levels; the board does the same.
     if (this.units === 'aviation' && feet >= 18000) {
       return [`FL${String(Math.round(feet / 100)).padStart(3, '0')}`, '']
@@ -80,6 +92,15 @@ export class Formatter {
     const rest = minutes % 60
     if (hours === 0) return `${rest} m`
     return rest === 0 ? `${hours} h` : `${hours} h ${rest} m`
+  }
+
+  /** "~5 min", "~1 h 10 min" — whole minutes, marked as an estimate. */
+  estimate(seconds: number): string {
+    const minutes = Math.max(1, Math.round(seconds / 60))
+    if (minutes < 60) return `~${minutes} min`
+    const hours = Math.floor(minutes / 60)
+    const rest = minutes % 60
+    return rest === 0 ? `~${hours} h` : `~${hours} h ${rest} min`
   }
 
   clock(date: Date): string {

@@ -74,6 +74,11 @@ async function open(
   await page.route(/adsbdb\.com/, (route) =>
     route.fulfill({ status: 200, body: routeBody(route.request().url()) }),
   )
+  // OpenSky's route service knows none of these: registered last, so it
+  // wins over the API mocks (and is not one of the API's own requests).
+  await page.route(/flightroutes\.opensky-network\.org/, (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: '[]' }),
+  )
   await page.goto('/')
   await page.waitForFunction(
     () => !document.getElementById('stage')?.classList.contains('loading'),

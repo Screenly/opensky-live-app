@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 
-import { findAirport, parseFlightQuery, shortAirportName } from './lookup'
+import {
+  findAirport,
+  isPublicCallsign,
+  parseFlightQuery,
+  shortAirportName,
+} from './lookup'
 
 describe('findAirport', () => {
   test('finds by ICAO and IATA, in any case', () => {
@@ -53,5 +58,19 @@ describe('parseFlightQuery', () => {
   test('rejects nonsense', () => {
     expect(parseFlightQuery('')).toBeNull()
     expect(parseFlightQuery('not a flight')).toBeNull()
+  })
+})
+
+describe('isPublicCallsign', () => {
+  test('airline, charter and cargo callsigns are public', () => {
+    for (const c of ['UAL1050', 'SKW425X', 'EZY37BK', 'MXY812', 'FDX1800']) {
+      expect(isPublicCallsign(c)).toBe(true)
+    }
+  })
+
+  test('registrations, and no callsign, are private', () => {
+    for (const c of ['N780SP', 'N25JX', 'OEELK', 'GABCD', '']) {
+      expect(isPublicCallsign(c)).toBe(false)
+    }
   })
 })

@@ -8,7 +8,7 @@ import {
 } from '@screenly/edge-apps/test/screenshots'
 import path from 'path'
 
-import { routeBody, statesBody, trackBody } from './opensky-mocks'
+import { routeBody, routesetBody, statesBody, trackBody } from './opensky-mocks'
 
 const METADATA = {
   coordinates: [37.3861, -122.0839] as [number, number],
@@ -77,6 +77,14 @@ async function capture(
     }),
   )
 
+  // OpenSky's route service, registered last so it wins over the API mocks.
+  await page.route(/flightroutes\.opensky-network\.org/, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: routesetBody(route.request().postData()),
+    }),
+  )
   await page.goto('/')
   await page.waitForLoadState('networkidle')
   await page.waitForFunction(

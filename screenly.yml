@@ -109,6 +109,19 @@ settings:
         type: boolean
         display_order: 7
         help_text: In the Around this screen mode, also draw aircraft that are taxiing or parked. The Airport mode always counts them.
+  show_private:
+    type: string
+    default_value: 'false'
+    title: Show Private Flights
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: boolean
+        advanced: true
+        display_order: 8
+        help_text: |
+          List private aircraft too. They fly under their registration (N780SP), which identifies the owner, so by default they are drawn on the map but never named or listed. Airline, charter and cargo flights are always listed.
   opensky_client_id:
     type: string
     default_value: ''
@@ -119,7 +132,7 @@ settings:
       properties:
         type: string
         advanced: true
-        display_order: 8
+        display_order: 9
         help_text: |
           Optional. Signs the app in to OpenSky for ten times the daily allowance (4,000 credits instead of 400), so the map refreshes every minute instead of every five and more screens can share one network. To get one: log in at opensky-network.org, open your Account page (opensky-network.org/my-opensky/account), create an API client, and paste its client_id here and its client_secret into OpenSky Client Secret. Leave both blank for anonymous access.
   opensky_client_secret:
@@ -130,7 +143,7 @@ settings:
       schema_version: 1
       properties:
         advanced: true
-        display_order: 9
+        display_order: 10
         help_text: |
           The client_secret of the OpenSky API client above. Both fields are needed; the screen says so if only one is filled in, or if OpenSky does not accept them. Stored as a secret.
   refresh_interval:
@@ -143,7 +156,7 @@ settings:
       properties:
         type: number
         advanced: true
-        display_order: 10
+        display_order: 11
         help_text: |
           How often to ask OpenSky for new positions. Leave blank for 300 seconds without credentials or 60 with them. Never faster than 240 seconds without credentials, or 30 with them, so the daily allowance lasts. Between refreshes the aircraft keep moving along their last known course.
   override_coordinates:
@@ -156,7 +169,7 @@ settings:
       properties:
         type: string
         advanced: true
-        display_order: 11
+        display_order: 12
         help_text: |
           Enter a comma-separated pair of coordinates (e.g., 51.4700,-0.4543). If not specified, the app will use the device's coordinates.
   override_locale:
@@ -169,7 +182,7 @@ settings:
       properties:
         type: string
         advanced: true
-        display_order: 12
+        display_order: 13
         help_text: |
           Change how numbers and times are written using a language code such as en, fr, de or pt-BR. Labels stay in English. Unsupported codes fall back to English.
   display_errors:
@@ -182,7 +195,7 @@ settings:
       properties:
         type: boolean
         advanced: true
-        display_order: 13
+        display_order: 14
         help_text: Show errors on screen instead of falling back to the last cached data. For debugging only.
   sentry_dsn:
     type: secret

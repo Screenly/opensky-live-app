@@ -257,6 +257,8 @@ const PLACES: Record<string, Place> = {
   DUB: ['DUB', 'EIDW', 'Dublin', 53.421, -6.27],
   MLE: ['MLE', 'VRMM', 'Malé', 4.192, 73.529],
   DEL: ['DEL', 'VIDP', 'Delhi', 28.567, 77.103],
+  NRT: ['NRT', 'RJAA', 'Tokyo', 35.765, 140.386],
+  HKG: ['HKG', 'VHHH', 'Hong Kong', 22.309, 113.915],
 }
 
 /**
@@ -272,6 +274,8 @@ const ROUTES: Record<string, [string, string, string]> = {
   ASA312: ['Alaska Airlines', 'SEA', 'SFO'],
   SWA1554: ['Southwest Airlines', 'SFO', 'LAS'],
   BAW286: ['British Airways', 'SFO', 'LHR'],
+  UAL837: ['United Airlines', 'SFO', 'NRT'],
+  CPA873: ['Cathay Pacific', 'HKG', 'SFO'],
 }
 
 function place([iata, icao, city, lat, lng]: Place) {
@@ -300,4 +304,32 @@ export function routeBody(url: string): string {
       },
     },
   })
+}
+
+/**
+ * OpenSky's flight-route service: itineraries as ICAO stops, for every
+ * callsign in the request. DAL2635 is known only here (adsbdb has nothing),
+ * so the SFO board shows OpenSky's route filling the gap.
+ */
+const OPENSKY_ROUTES: Record<string, string> = {
+  ...Object.fromEntries(
+    Object.entries(ROUTES).map(([callsign, [, from, to]]) => [
+      callsign,
+      `${PLACES[from]![1]}-${PLACES[to]![1]}`,
+    ]),
+  ),
+  DAL2635: 'KJFK-KSFO',
+}
+
+export function routesetBody(postData: string | null): string {
+  const { planes = [] } = JSON.parse(postData ?? '{}') as {
+    planes?: Array<{ callsign: string }>
+  }
+  return JSON.stringify(
+    planes.map(({ callsign }) => ({
+      callsign,
+      airport_codes: OPENSKY_ROUTES[callsign] ?? 'unknown',
+      plausible: OPENSKY_ROUTES[callsign] ? 1 : 0,
+    })),
+  )
 }
