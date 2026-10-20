@@ -1,0 +1,192 @@
+---
+syntax: manifest_v1
+description: 'Live air traffic from the OpenSky Network: the sky around this screen, an airport, or one flight followed across the map.'
+icon: https://playground.srly.io/edge-apps/icons/opensky-flight-map.svg
+author: Screenly, Inc.
+categories:
+  - Dashboards
+ready_signal: true
+settings:
+  mode:
+    type: string
+    default_value: area
+    title: What to Show
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: select
+        display_order: 1
+        help_text: |
+          Around this screen: every aircraft within the radius of the screen's location (or the override coordinates).
+          Airport: the traffic arriving at, leaving and on the ground at one airport.
+          Flight: one flight, followed across the map by its flight number.
+        options:
+          - label: Around this screen
+            value: area
+          - label: Airport
+            value: airport
+          - label: Flight
+            value: flight
+  airport:
+    type: string
+    default_value: ''
+    title: Airport
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        display_order: 2
+        help_text: |
+          For the Airport mode. An IATA or ICAO code, such as LHR or EGLL, SFO or KSFO. Around 3,000 airports with scheduled service are recognised.
+  flight_number:
+    type: string
+    default_value: ''
+    title: Flight Number
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        display_order: 3
+        help_text: |
+          For the Flight mode. A flight number (BA283), an ICAO callsign (BAW283) or a 6-character ICAO24 transponder address (4ca7b5). The flight is shown while it is airborne.
+  radius_km:
+    type: string
+    default_value: '100'
+    title: Radius (km)
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: number
+        display_order: 4
+        help_text: How far around the screen or airport to look, in kilometres. Between 10 and 400.
+  units:
+    type: string
+    default_value: aviation
+    title: Units
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: select
+        display_order: 5
+        help_text: How altitude, speed and distance are written.
+        options:
+          - label: Aviation (ft, kt, nm)
+            value: aviation
+          - label: Metric (m, km/h, km)
+            value: metric
+          - label: Imperial (ft, mph, mi)
+            value: imperial
+  color_scheme:
+    type: string
+    default_value: dark
+    title: Theme
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: select
+        advanced: true
+        display_order: 6
+        help_text: A dark radar-style map, or a light paper one.
+        options:
+          - label: Dark
+            value: dark
+          - label: Light
+            value: light
+  show_ground:
+    type: string
+    default_value: 'false'
+    title: Show Aircraft on the Ground
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: boolean
+        display_order: 7
+        help_text: In the Around this screen mode, also draw aircraft that are taxiing or parked. The Airport mode always counts them.
+  opensky_client_id:
+    type: string
+    default_value: ''
+    title: OpenSky Client ID
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        advanced: true
+        display_order: 8
+        help_text: |
+          Optional. Signs the app in to OpenSky for ten times the daily allowance (4,000 credits instead of 400), so the map refreshes every minute instead of every five and more screens can share one network. To get one: log in at opensky-network.org, open your Account page (opensky-network.org/my-opensky/account), create an API client, and paste its client_id here and its client_secret into OpenSky Client Secret. Leave both blank for anonymous access.
+  opensky_client_secret:
+    type: secret
+    title: OpenSky Client Secret
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        advanced: true
+        display_order: 9
+        help_text: |
+          The client_secret of the OpenSky API client above. Both fields are needed; the screen says so if only one is filled in, or if OpenSky does not accept them. Stored as a secret.
+  refresh_interval:
+    type: string
+    default_value: ''
+    title: Refresh Interval (seconds)
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: number
+        advanced: true
+        display_order: 10
+        help_text: |
+          How often to ask OpenSky for new positions. Leave blank for 300 seconds without credentials or 60 with them. Never faster than 240 seconds without credentials, or 30 with them, so the daily allowance lasts. Between refreshes the aircraft keep moving along their last known course.
+  override_coordinates:
+    type: string
+    default_value: ''
+    title: Override Coordinates
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        advanced: true
+        display_order: 11
+        help_text: |
+          Enter a comma-separated pair of coordinates (e.g., 51.4700,-0.4543). If not specified, the app will use the device's coordinates.
+  override_locale:
+    type: string
+    default_value: en
+    title: Override Locale
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        advanced: true
+        display_order: 12
+        help_text: |
+          Change how numbers and times are written using a language code such as en, fr, de or pt-BR. Labels stay in English. Unsupported codes fall back to English.
+  display_errors:
+    type: string
+    default_value: 'false'
+    title: Display Errors
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: boolean
+        advanced: true
+        display_order: 13
+        help_text: Show errors on screen instead of falling back to the last cached data. For debugging only.
+  sentry_dsn:
+    type: secret
+    title: Sentry Client Key
+    optional: true
+    is_global: true
+    help_text: Sentry Client Key from Sentry SDK for error capturing.

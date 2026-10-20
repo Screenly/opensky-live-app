@@ -1,0 +1,57 @@
+import { describe, expect, test } from 'bun:test'
+
+import { findAirport, parseFlightQuery, shortAirportName } from './lookup'
+
+describe('findAirport', () => {
+  test('finds by ICAO and IATA, in any case', () => {
+    expect(findAirport('EGLL')?.iata).toBe('LHR')
+    expect(findAirport('lhr')?.icao).toBe('EGLL')
+    expect(findAirport(' sfo ')?.icao).toBe('KSFO')
+  })
+
+  test('returns null for unknown or blank codes', () => {
+    expect(findAirport('')).toBeNull()
+    expect(findAirport('ZZZ')).toBeNull()
+    expect(findAirport('LHRX')).toBeNull()
+  })
+
+  test('shortens the name for the heading', () => {
+    expect(shortAirportName(findAirport('LHR')!)).toBe('London Heathrow')
+  })
+})
+
+describe('parseFlightQuery', () => {
+  test('translates IATA flight numbers to ICAO callsigns', () => {
+    expect(parseFlightQuery('BA283')).toEqual({
+      kind: 'callsign',
+      callsigns: ['BAW283'],
+      label: 'BA283',
+    })
+  })
+
+  test('drops leading zeros and tolerates spaces', () => {
+    const query = parseFlightQuery('ba 0283')
+    expect(query?.kind === 'callsign' && query.callsigns).toEqual(['BAW283'])
+  })
+
+  test('keeps ICAO callsigns as typed', () => {
+    expect(parseFlightQuery('UAL90')).toEqual({
+      kind: 'callsign',
+      callsigns: ['UAL90'],
+      label: 'UAL90',
+    })
+  })
+
+  test('reads a hex transponder address as icao24', () => {
+    expect(parseFlightQuery('4CA7B5')).toEqual({
+      kind: 'icao24',
+      icao24: '4ca7b5',
+      label: '4CA7B5',
+    })
+  })
+
+  test('rejects nonsense', () => {
+    expect(parseFlightQuery('')).toBeNull()
+    expect(parseFlightQuery('not a flight')).toBeNull()
+  })
+})
