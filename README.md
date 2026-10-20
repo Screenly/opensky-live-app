@@ -1,4 +1,6 @@
-# Live Flights — Screenly Edge App
+[![Version](https://img.shields.io/github/v/release/Screenly/opensky-live-app)](https://github.com/Screenly/opensky-live-app/releases/latest)
+
+# OpenSky Live — Screenly Edge App
 
 ![The sky around the screen, with the closest aircraft listed](screenshots/opensky-flight-map-1920x1080.webp)
 
@@ -284,13 +286,22 @@ bun run test         # unit tests
 bun run screenshots  # Playwright, against mocked OpenSky data
 ```
 
-## Deploy
+## Deployment
 
-Pushing to `development` deploys to stage; pushing to `master` deploys to
-production, through `.github/workflows/update-edge-app.yml`. The first create
-for an environment is the manual **Initialize Edge App** workflow.
+Create and deploy the Edge App (first time):
 
-To deploy by hand:
+```bash
+screenly edge-app create --name opensky-live-app --in-place
+bun run deploy
+screenly edge-app instance create
+```
+
+Or use the manual **Initialize Edge App** GitHub Action for stage, then
+production. After each run, set `STAGE_EDGE_APP_ID` /
+`PRODUCTION_EDGE_APP_ID` from the printed id. Both environments need the
+`SCREENLY_API_TOKEN` secret.
+
+To deploy by hand later:
 
 ```bash
 bun run deploy
@@ -299,6 +310,28 @@ bun run deploy
 The manifest's icon points at
 `https://playground.srly.io/edge-apps/icons/opensky-flight-map.svg`; upload
 `icon.svg` there before the first deploy.
+
+### Releasing
+
+Pushes to `master` deploy to stage automatically. To release to production,
+tag a commit on `master` and push the tag (the workflow refuses tags not on
+the default branch):
+
+```bash
+git checkout master && git pull
+git tag v26.10.0
+git push origin v26.10.0
+```
+
+Then publish a GitHub Release whose notes list the pull requests merged since
+the previous release. Add `--draft` to review the notes before publishing:
+
+```bash
+gh release create v26.10.0 --verify-tag --generate-notes --title v26.10.0
+```
+
+Use the `vYY.M.PATCH` scheme (e.g. `v26.10.0` for the first release in
+October 2026, `v26.10.1` for the next one that month).
 
 Flight data © The OpenSky Network, used under its
 [terms of use](https://opensky-network.org/about/terms-of-use).

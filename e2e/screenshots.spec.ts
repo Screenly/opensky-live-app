@@ -96,18 +96,34 @@ for (const { width, height } of RESOLUTIONS) {
   })
 }
 
+/** Landscape + portrait 1080p only — full RESOLUTIONS cover dark area mode above */
+const VARIANT_RESOLUTIONS = [
+  [1920, 1080],
+  [1080, 1920],
+] as const
+
 const VARIANTS: Array<[string, Record<string, string>]> = [
   ['airport', { mode: 'airport', airport: 'SFO', radius_km: '60' }],
   ['flight', { mode: 'flight', flight_number: 'EI105' }],
   ['grounded', { mode: 'flight', flight_number: 'AI264' }],
+  // Light theme for every mode (area, airport, flight, grounded)
   ['light', { color_scheme: 'light', units: 'metric' }],
+  [
+    'airport-light',
+    { mode: 'airport', airport: 'SFO', radius_km: '60', color_scheme: 'light' },
+  ],
+  [
+    'flight-light',
+    { mode: 'flight', flight_number: 'EI105', color_scheme: 'light' },
+  ],
+  [
+    'grounded-light',
+    { mode: 'flight', flight_number: 'AI264', color_scheme: 'light' },
+  ],
 ]
 
 for (const [variant, settings] of VARIANTS) {
-  for (const [width, height] of [
-    [1920, 1080],
-    [1080, 1920],
-  ] as const) {
+  for (const [width, height] of VARIANT_RESOLUTIONS) {
     test(`screenshot ${variant} ${width}x${height}`, async ({ browser }) => {
       await capture(
         browser,
@@ -135,10 +151,7 @@ const ERRORS: Array<[string, Record<string, string>, Scenario?]> = [
 ]
 
 for (const [variant, settings, scenario] of ERRORS) {
-  for (const [width, height] of [
-    [1920, 1080],
-    [1080, 1920],
-  ] as const) {
+  for (const [width, height] of VARIANT_RESOLUTIONS) {
     test(`screenshot ${variant} ${width}x${height}`, async ({ browser }) => {
       await capture(
         browser,
