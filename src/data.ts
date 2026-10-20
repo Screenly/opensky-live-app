@@ -15,7 +15,8 @@ import {
   type Snapshot,
   type Waypoint,
 } from './opensky'
-import { legNow, plausible, type Route } from './route'
+import { notInLiveData, stillFlying } from './recover'
+import { estimateFrom, legNow, plausible, type Route } from './route'
 import { lookupOrder, type Routes } from './traffic'
 
 /** What the screen is watching, worked out once from the settings. */
@@ -38,6 +39,16 @@ export interface Cached {
   routeFor: string
   /** Airport mode: routes for the board's callsigns (missing in old caches). */
   routes?: Routes
+  /**
+   * Flight mode: set while a followed flight is out of receiver range — it
+   * vanished from OpenSky at cruise, mid-route, so it is still flying. Then
+   * fetchedAt stays the time of its last live fix, and checkedAt is when
+   * OpenSky was last asked.
+   */
+  lostAt?: number
+  checkedAt?: number
+  /** Flight mode: the followed callsign's transponder, once learned. */
+  hint?: string
 }
 
 /** Aircraft keep moving along their last course for at most this long. */
@@ -74,7 +85,8 @@ export function refreshMs(): number {
  * a worldwide query, four times the cost of a local one.
  */
 export function freshFor(plan: Plan, cached: Cached): number {
-  if (plan.mode === 'flight' && cached.target === null) {
+  // Not found, or out of range: finding it again is a worldwide query.
+  if (plan.mode === 'flight' && (cached.target === null || cached.lostAt)) {
     return (hasCredentials() ? 5 : 20) * 60 * 1000
   }
   return refreshMs()
@@ -104,6 +116,11 @@ export function positionOf(
     cached.snapshot.time -
     aircraft.seen +
     (Date.now() - cached.fetchedAt) / 1000
+  // Out of receiver range: carried on along its route for as long as it is
+  // lost, rather than the few minutes a live aircraft glides between fixes.
+  if (cached.lostAt && aircraft.icao24 === cached.target) {
+    return estimateFrom(aircraft, cached.route, Math.max(age, 0))
+  }
   const seconds = Math.min(Math.max(age, 0), MAX_GLIDE_S)
   return deadReckon(
     aircraft.lat,
@@ -167,15 +184,17 @@ async function fetchFlight(
 
   const fetchedAt = Date.now()
   if (!target || !snapshot) {
-    return {
+    const lost = stillFlying(previous, last, fetchedAt)
+    if (lost) return { ...lost, key }
+    const grounded = await routeWhileGrounded(query, previous)
+    return notInLiveData(
       key,
+      query,
+      previous,
+      grounded,
+      snapshot?.time,
       fetchedAt,
-      snapshot: { time: snapshot?.time ?? fetchedAt / 1000, aircraft: [] },
-      target: null,
-      trail: [],
-      trailAt: 0,
-      ...(await routeWhileGrounded(query, previous)),
-    }
+    )
   }
 
   // Keep the neighbourhood only: a worldwide answer is ten thousand aircraft.
@@ -196,6 +215,9 @@ async function fetchFlight(
     snapshot: { time: snapshot.time, aircraft: kept },
     target: found.icao24,
     ...(await whereFromAndTo(found, previous, fetchedAt)),
+    // Remembered, so if this screen later loses the flight with no position
+    // to hand, its recorded path can still be read by this transponder.
+    hint: found.icao24,
   }
 }
 

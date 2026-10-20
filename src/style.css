@@ -380,6 +380,16 @@
     );
   }
 
+  /* Out of receiver range: an estimated position, drawn as one. */
+  .estimated .plane.target svg {
+    opacity: 0.65;
+  }
+
+  .estimated .plane.target .glyph::before {
+    background: none;
+    border: 0.15rem dashed var(--accent-tint);
+  }
+
   .plane.target svg {
     opacity: 1;
     filter: drop-shadow(0 0 0.5rem var(--accent));

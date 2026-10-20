@@ -106,6 +106,13 @@ const PAIRS: Pair[] = [
     on: 'map',
   })),
   { what: 'followed aircraft', kind: 'non-text', fg: 'accent-tint', on: 'map' },
+  {
+    what: 'followed aircraft, estimated (faded)',
+    kind: 'non-text',
+    fg: 'accent-tint',
+    opacity: 0.65,
+    on: 'map',
+  },
 
   // Other map marks that carry meaning.
   { what: 'screen marker', kind: 'non-text', fg: 'ink', on: 'map' },

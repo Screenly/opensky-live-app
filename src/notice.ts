@@ -80,3 +80,12 @@ export const CREDENTIALS_REJECTED: NoticeContent = {
     'The client ID or secret is wrong, or the API client was deleted. Copy both again from your OpenSky account page, or clear both to use anonymous access.',
   fix: CREDENTIALS_FIX,
 }
+
+/** Start-up threw: nothing else can be drawn, but this can. */
+export const STARTUP_FAILED: NoticeContent = {
+  tone: 'error',
+  label: 'Live flights',
+  title: 'Something went wrong',
+  detail:
+    'The app could not start. It has been reported, and will try again the next time it is shown.',
+}

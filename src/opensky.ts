@@ -249,3 +249,44 @@ export async function routesFromOpenSky(
   }
   return found
 }
+
+/** A departure OpenSky saw: which aircraft, under which callsign, when. */
+export interface Departure {
+  icao24: string
+  callsign: string
+  firstSeen: number
+}
+
+/**
+ * Flights OpenSky saw leave an airport between two times (Unix seconds).
+ * Used to learn which aircraft a callsign is when it is not in the live data
+ * — out of receiver range — so its recorded path can be read. Costs credits
+ * from the flights allowance; any failure is no departures.
+ */
+export async function departuresFrom(
+  airportIcao: string,
+  begin: number,
+  end: number,
+): Promise<Departure[]> {
+  try {
+    const response = await get(
+      `/flights/departure?airport=${encodeURIComponent(airportIcao)}&begin=${Math.floor(begin)}&end=${Math.floor(end)}`,
+    )
+    if (!response.ok) return []
+    const body = (await response.json()) as unknown
+    if (!Array.isArray(body)) return []
+    return body
+      .map((x) => x as Record<string, unknown>)
+      .filter((x) => typeof x.icao24 === 'string')
+      .map((x) => ({
+        icao24: String(x.icao24),
+        callsign: String(x.callsign ?? '')
+          .trim()
+          .toUpperCase(),
+        firstSeen: Number(x.firstSeen),
+      }))
+  } catch (error) {
+    console.warn('No departures for', airportIcao, error)
+    return []
+  }
+}

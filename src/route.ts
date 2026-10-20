@@ -3,8 +3,8 @@
 // a callsign, not a record of this particular trip. Kept free of the Edge Apps
 // library so it can be unit-tested without a DOM.
 
-import { kmBetween, nearLongitude } from './geo'
-import type { Waypoint } from './states'
+import { bearing, deadReckon, kmBetween, nearLongitude } from './geo'
+import type { Aircraft, Waypoint } from './states'
 
 export interface RoutePlace {
   iata: string
@@ -212,4 +212,94 @@ export function legNow(
     }
   }
   return best
+}
+
+/**
+ * Where an aircraft out of receiver range is likely to be: carried from its
+ * last fix towards where it is going at its last ground speed, stopping at
+ * the airport; with no route, along its last track for at most 30 minutes.
+ * Straight in this flat projection, which is close enough for an estimate
+ * that is drawn as one.
+ */
+export function estimateFrom(
+  at: { lat: number; lng: number; speed: number; track: number },
+  route: Route | null,
+  seconds: number,
+): { lat: number; lng: number } {
+  if (!route) {
+    return deadReckon(
+      at.lat,
+      at.lng,
+      at.speed,
+      at.track,
+      Math.min(seconds, 1800),
+    )
+  }
+  const to = route.to
+  const left = kmBetween(at.lat, at.lng, to.lat, to.lng)
+  const fraction =
+    left > 0 ? Math.min((at.speed * seconds) / 1000 / left, 1) : 1
+  return {
+    lat: at.lat + (to.lat - at.lat) * fraction,
+    lng: at.lng + (nearLongitude(to.lng, at.lng) - at.lng) * fraction,
+  }
+}
+
+/** Below this altitude a vanished flight may well have landed. */
+export const CRUISE_M = 3000
+/** A lost flight with no known route is estimated for at most this long. */
+const LOST_WITHOUT_ROUTE_MS = 12 * 60 * 60 * 1000
+/** And one with a route, until this long after its estimated arrival. */
+const LOST_GRACE_MS = 30 * 60 * 1000
+
+/**
+ * Is a flight last heard at `lastFixMs`, from `at`, surely still flying at
+ * `now`? Only if it was at cruise when last heard, and has not yet had time
+ * to reach where it was going (plus half an hour); with no route, for up to
+ * twelve hours.
+ */
+export function stillDue(
+  at: { lat: number; lng: number; speed: number; altitude: number | null },
+  route: Route | null,
+  lastFixMs: number,
+  now: number,
+): boolean {
+  if ((at.altitude ?? 0) < CRUISE_M) return false
+  const toGo = route ? progress(route, at, at.speed).remainingS : null
+  const deadline =
+    toGo === null
+      ? lastFixMs + LOST_WITHOUT_ROUTE_MS
+      : lastFixMs + toGo * 1000 + LOST_GRACE_MS
+  return now <= deadline
+}
+
+/**
+ * The aircraft as it was last heard, from the end of its recorded path:
+ * position and altitude from the last point, speed and heading from the
+ * last two. Null for a path too short to tell.
+ */
+export function lastHeard(
+  path: Waypoint[],
+  icao24: string,
+  callsign: string,
+): Aircraft | null {
+  if (path.length < 2) return null
+  const [t1, lat1, lng1] = path.at(-2)!
+  const [t2, lat2, lng2, altitude] = path.at(-1)!
+  const seconds = t2 - t1
+  if (seconds <= 0) return null
+  return {
+    icao24,
+    callsign,
+    country: '',
+    lat: lat2,
+    lng: lng2,
+    altitude,
+    onGround: false,
+    speed: (kmBetween(lat1, lng1, lat2, lng2) * 1000) / seconds,
+    track: bearing(lat1, lng1, lat2, lng2),
+    verticalRate: 0,
+    squawk: '',
+    seen: t2,
+  }
 }

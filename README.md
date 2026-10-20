@@ -167,6 +167,31 @@ refresh in one OpenSky request, and at most four adsbdb fallbacks. City
 names come from the bundled airport table, which lists each airport's own
 town: Athens appears as Spata-Artemida.
 
+## Out of receiver range (flight mode)
+
+OpenSky only hears aircraft near its volunteer receivers, so a flight over
+an ocean drops out of its data — ASA815, San Diego to Honolulu, vanishes a
+few hundred miles off the coast. A followed flight that disappears **at
+cruise altitude** has not landed: the app keeps it, carries it on along its
+route at its last speed, and draws it **faded**, with the panel saying
+**out of receiver range, last seen 12:20 AM**. Progress, estimated arrival
+and distance to go carry on from that estimate.
+
+It goes back to live tracking as soon as OpenSky hears it again (near
+Hawaii, say). While lost, OpenSky is asked every 5 minutes signed in (20
+anonymously), since finding it is a worldwide query. The estimate stops 30
+minutes after its estimated arrival — 12 hours if its route is unknown — and
+only then does the screen say it is not in the air.
+
+A screen with no last position of its own — set up while the flight was
+already out of range — asks OpenSky instead: which aircraft flew the
+callsign out of its origin (OpenSky's departure records), and where that
+aircraft's recorded path ends. A screen that has seen the flight live even
+once remembers its transponder and goes straight to the path. Only if
+neither works — OpenSky's departure list does occasionally leave a flight
+out (it did for ASA815) — does it say the flight is not in the air until it
+is heard again.
+
 ## Route and estimated arrival (flight mode)
 
 OpenSky's positions carry no route, so it comes from OpenSky's flight-route

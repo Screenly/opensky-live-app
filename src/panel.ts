@@ -239,6 +239,22 @@ export class Panel {
     return this.includePrivate || isPublicCallsign(aircraft.callsign)
   }
 
+  /**
+   * Who flies it, and its transponder — or, out of receiver range, when it
+   * was last heard: the position, progress and arrival are estimates from
+   * then.
+   */
+  private flightSub(
+    target: Aircraft,
+    route: Route | null,
+    lostSince?: number,
+  ): string {
+    const who = route?.airline || target.country
+    if (!lostSince) return `${who} · ${target.icao24.toUpperCase()}`
+    const seen = this.fmt.clock(new Date(lostSince))
+    return `${who} · out of receiver range, last seen ${seen}`
+  }
+
   /** Hides the route line; only a followed flight with a known route shows it. */
   noRoute(): void {
     $('route').hidden = true
@@ -255,12 +271,13 @@ export class Panel {
     screenAt: { lat: number; lng: number } | null,
     route: Route | null,
     now: { lat: number; lng: number },
+    lostSince?: number,
   ): Set<string> {
     const name = target.callsign || query.label
     this.head(
       name === query.label ? 'Tracking' : `Tracking ${query.label}`,
       name,
-      `${route?.airline || target.country} · ${target.icao24.toUpperCase()}`,
+      this.flightSub(target, route, lostSince),
     )
     const ahead = route ? progress(route, now, target.speed) : null
     $('route').hidden = !route

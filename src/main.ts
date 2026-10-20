@@ -31,6 +31,7 @@ import { code, flightView, plausible, type Route } from './route'
 import {
   CREDENTIALS_PARTIAL,
   CREDENTIALS_REJECTED,
+  STARTUP_FAILED,
   fillNotice,
   type NoticeContent,
 } from './notice'
@@ -100,7 +101,17 @@ function draw(): void {
     if (!followed) return
     const now = locate(followed)
     const known = route(followed)
-    labelled = panel.flight(plan.query, followed, screenAt, known, now)
+    const { query } = plan
+    labelled = panel.flight(
+      query,
+      followed,
+      screenAt,
+      known,
+      now,
+      current.lostAt,
+    )
+    // Out of receiver range: drawn faded, as an estimate.
+    stage.classList.toggle('estimated', Boolean(current.lostAt))
     say(
       'brand-sub',
       known
@@ -228,7 +239,9 @@ async function refresh(): Promise<void> {
   const previous = stored?.key === cacheKey(plan, radiusKm) ? stored : null
 
   if (previous) {
-    const age = Date.now() - previous.fetchedAt
+    // A lost flight keeps its last fix as fetchedAt; when OpenSky was last
+    // asked is checkedAt.
+    const age = Date.now() - (previous.checkedAt ?? previous.fetchedAt)
     if (age < freshFor(plan, previous)) {
       show(previous, null)
       schedule(freshFor(plan, previous) - age)
@@ -308,13 +321,7 @@ async function start(): Promise<void> {
   } catch (thrown) {
     reportError(thrown, { source: 'start-up' })
     try {
-      notice({
-        tone: 'error',
-        label: 'Live flights',
-        title: 'Something went wrong',
-        detail:
-          'The app could not start. It has been reported, and will try again the next time it is shown.',
-      })
+      notice(STARTUP_FAILED)
     } catch {
       // Too early to draw anything; the signal still goes out.
     }
