@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { Formatter, resolveUnits } from './format'
+import { Formatter, resolveUnits, zoneAt, zoneName } from './format'
 
 describe('Formatter', () => {
   const aviation = new Formatter('aviation', 'en')
@@ -53,5 +53,37 @@ describe('Formatter', () => {
   test('unknown units fall back to aviation', () => {
     expect(resolveUnits('furlongs')).toBe('aviation')
     expect(resolveUnits('metric')).toBe('metric')
+  })
+})
+
+describe('times with their timezone', () => {
+  // 20 October 2026, 19:59 UTC: summer time still on in the US and UK.
+  const at = new Date(Date.UTC(2026, 9, 20, 19, 59))
+
+  test('a place gives its timezone', () => {
+    expect(zoneAt(21.318, -157.92)).toBe('Pacific/Honolulu')
+    expect(zoneAt(9.93, 76.27)).toBe('Asia/Kolkata')
+  })
+
+  test('zones get their everyday abbreviation, else their offset', () => {
+    expect(zoneName(at, 'America/Los_Angeles')).toBe('PDT')
+    expect(zoneName(at, 'Pacific/Honolulu')).toBe('HST')
+    expect(zoneName(at, 'Europe/London')).toBe('BST')
+    expect(zoneName(at, 'Asia/Kolkata')).toBe('IST')
+    expect(zoneName(at, 'Indian/Maldives')).toBe('GMT+5')
+    expect(zoneName(at, 'Europe/Dublin')).toBe('IST')
+  })
+
+  test('no offset is plain GMT', () => {
+    const winter = new Date(Date.UTC(2026, 0, 15, 12))
+    expect(zoneName(winter, 'Europe/Dublin')).toBe('GMT')
+    // A screen set to UTC is named so.
+    expect(zoneName(winter, 'UTC')).toBe('UTC')
+  })
+
+  test("a clock time is in the screen's zone, or another one given", () => {
+    const screen = new Formatter('aviation', 'en-US', 'America/Los_Angeles')
+    expect(screen.clock(at)).toBe('12:59 PM PDT')
+    expect(screen.clock(at, 'Pacific/Honolulu')).toBe('09:59 AM HST')
   })
 })

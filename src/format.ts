@@ -1,3 +1,5 @@
+import tzlookup from '@photostructure/tz-lookup'
+
 export type Units = 'aviation' | 'metric' | 'imperial'
 
 export function resolveUnits(value: string): Units {
@@ -13,6 +15,8 @@ export class Formatter {
   constructor(
     private units: Units,
     private locale: string,
+    /** The screen's timezone; clock times are in it unless told otherwise. */
+    private timeZone?: string,
   ) {}
 
   number(value: number, digits = 0): string {
@@ -103,14 +107,64 @@ export class Formatter {
     return rest === 0 ? `~${hours} h` : `~${hours} h ${rest} min`
   }
 
-  clock(date: Date): string {
+  /**
+   * "12:55 AM IST": a time in a timezone — the screen's, unless another is
+   * given — with that zone's name, so a time is never ambiguous on a screen
+   * whose viewers may be anywhere.
+   */
+  clock(date: Date, timeZone = this.timeZone): string {
+    return `${this.time(date, timeZone)} ${zoneName(date, timeZone)}`
+  }
+
+  /** Just the time, in a timezone: "09:43 PM". */
+  time(date: Date, timeZone = this.timeZone): string {
     return new Intl.DateTimeFormat(this.locale, {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone,
     }).format(date)
   }
 
   degrees(value: number, positive: string, negative: string): string {
     return `${this.number(Math.abs(value), 3)}° ${value < 0 ? negative : positive}`
   }
+}
+
+/** The timezone at a place, as an IANA name: "Pacific/Honolulu". */
+export function zoneAt(lat: number, lng: number): string {
+  return tzlookup(lat, lng)
+}
+
+/** English locales tried, in turn, for a zone's everyday abbreviation. */
+const ZONE_LOCALES = [
+  'en-US',
+  'en-GB',
+  'en-IE',
+  'en-IN',
+  'en-AU',
+  'en-NZ',
+  'en-CA',
+]
+
+/**
+ * A timezone's short name at a moment: "PDT", "HST", "BST", "IST". Browsers
+ * only abbreviate a zone in the locales that use it (London is "GMT+1" in US
+ * English, "BST" in British), so several are tried; where none has a name,
+ * the offset is shown instead: "GMT+5".
+ */
+export function zoneName(date: Date, timeZone?: string): string {
+  let offset = ''
+  for (const locale of ZONE_LOCALES) {
+    const part = new Intl.DateTimeFormat(locale, {
+      timeZone,
+      timeZoneName: 'short',
+    })
+      .formatToParts(date)
+      .find((p) => p.type === 'timeZoneName')?.value
+    if (!part) continue
+    if (/^[A-Z]{2,5}$/.test(part)) return part
+    offset ||= part
+  }
+  // Some browsers write no offset as "GMT+0" (or "UTC"): it is just GMT.
+  return /^(GMT|UTC)([+-]0(:00)?)?$/.test(offset) ? 'GMT' : offset
 }

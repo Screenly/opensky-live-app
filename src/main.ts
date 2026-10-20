@@ -36,7 +36,7 @@ import {
   type NoticeContent,
 } from './notice'
 import { legend, Panel } from './panel'
-import { resolveLocale, resolvePosition } from './place'
+import { resolveLocale, resolvePosition, resolveTimeZone } from './place'
 import { resolvePlan } from './plan'
 import { motionOf } from './traffic'
 import { ready } from './ready'
@@ -343,15 +343,15 @@ async function boot(): Promise<void> {
   )
 
   const units = resolveUnits(getSettingWithDefault<string>('units', 'aviation'))
-  fmt = new Formatter(units, resolveLocale())
+  // Where the screen is, first: its timezone comes from its position. The
+  // bridge hands coordinates over as strings; resolvePosition converts them.
+  const position = resolvePosition()
+  screenAt = position ? { lat: position.lat, lng: position.lng } : null
+  fmt = new Formatter(units, resolveLocale(), resolveTimeZone(position))
   panel = new Panel(fmt, glyph)
 
   const radius = getSettingWithDefault<number>('radius_km', 100)
   radiusKm = Number.isFinite(radius) ? Math.min(Math.max(radius, 10), 400) : 100
-  // The bridge hands coordinates over as strings; resolvePosition converts
-  // them, because `+` on a string silently poisons every sum downstream.
-  const position = resolvePosition()
-  screenAt = position ? { lat: position.lat, lng: position.lng } : null
 
   plan = await resolvePlan(say, notice)
   // A setting to fix: shown, so an operator sees it.

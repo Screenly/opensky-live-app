@@ -2,7 +2,7 @@ import { escapeHtml } from '@screenly/edge-apps'
 
 import { renderBoard } from './board'
 import { airborne } from './data'
-import type { Formatter } from './format'
+import { zoneAt, zoneName, type Formatter } from './format'
 import { bearing, compass, kmBetween } from './geo'
 import {
   isPublicCallsign,
@@ -94,7 +94,9 @@ export class Panel {
     el.style.setProperty('--columns', String(columns))
     el.innerHTML = facts
       .map(({ label, value: [value, unit], className, marker }) => {
-        const small = unit ? `<small>${escapeHtml(unit)}</small>` : ''
+        // A caption may run to more than one line ("\n"), each kept whole.
+        const lines = unit.split('\n').map(escapeHtml).join('<br>')
+        const small = unit ? `<small>${lines}</small>` : ''
         const key = marker ? `<span class="key ${marker}"></span>` : ''
         return (
           `<div class="fact"><div class="label">${key}${escapeHtml(label)}</div>` +
@@ -255,6 +257,22 @@ export class Panel {
     return `${who} · out of receiver range, last seen ${seen}`
   }
 
+  /**
+   * When it should land, in the destination's own time — as airlines and
+   * arrivals boards give it — with that zone and how long until then below,
+   * and the screen's own time on a line of its own if the destination is in
+   * another zone: "04:59 AM" / "HST · in 4 h 40 m" / "07:59 AM PDT here".
+   */
+  private arrival(route: Route, seconds: number): [string, string] {
+    const at = new Date(Date.now() + seconds * 1000)
+    const there = zoneAt(route.to.lat, route.to.lng)
+    const wait = `${zoneName(at, there)} · in ${this.fmt.duration(seconds)}`
+    const here = this.fmt.clock(at)
+    // The same time and zone name means the same zone, for show.
+    const same = this.fmt.clock(at, there) === here
+    return [this.fmt.time(at, there), same ? wait : `${wait}\n${here} here`]
+  }
+
   /** Hides the route line; only a followed flight with a known route shows it. */
   noRoute(): void {
     $('route').hidden = true
@@ -303,12 +321,7 @@ export class Panel {
           value:
             ahead.remainingS === null
               ? NONE
-              : [
-                  this.fmt.clock(
-                    new Date(Date.now() + ahead.remainingS * 1000),
-                  ),
-                  `in ${this.fmt.duration(ahead.remainingS)}`,
-                ],
+              : this.arrival(route!, ahead.remainingS),
           // A clock time, not a figure to line up; "in 4 h 45 m" below it.
           className: 'time',
         },

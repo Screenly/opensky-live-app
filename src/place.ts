@@ -1,6 +1,8 @@
 import { getSettingWithDefault } from '@screenly/edge-apps'
 import { getNearestCity } from 'offline-geocode-city'
 
+import { zoneAt } from './format'
+
 export interface Position {
   lat: number
   lng: number
@@ -90,4 +92,24 @@ export function resolveLocale(): string {
   }
   console.warn(`Invalid locale override: "${requested}"`)
   return 'en'
+}
+
+/**
+ * The screen's timezone, so its clock times are right whatever the player's
+ * own clock is set to (some run in UTC). An Override Timezone setting wins if
+ * it is a real zone; then the zone at the screen's position (including an
+ * Override Coordinates); then the player's own.
+ */
+export function resolveTimeZone(position: Position | null): string {
+  const override = getSettingWithDefault<string>('override_timezone', '').trim()
+  if (override) {
+    try {
+      new Intl.DateTimeFormat('en', { timeZone: override })
+      return override
+    } catch {
+      console.warn(`Invalid timezone override: "${override}"`)
+    }
+  }
+  if (position) return zoneAt(position.lat, position.lng)
+  return Intl.DateTimeFormat().resolvedOptions().timeZone
 }

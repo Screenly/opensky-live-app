@@ -172,6 +172,19 @@ settings:
         display_order: 12
         help_text: |
           Enter a comma-separated pair of coordinates (e.g., 51.4700,-0.4543). If not specified, the app will use the device's coordinates.
+  override_timezone:
+    type: string
+    default_value: ''
+    title: Override Timezone
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: string
+        advanced: true
+        display_order: 13
+        help_text: |
+          The timezone for the times on screen, such as America/Los_Angeles or Asia/Kolkata. Leave blank to use the screen's location (or Override Coordinates). Arrival times in flight mode are always shown in the destination's own time.
   override_locale:
     type: string
     default_value: en
@@ -182,7 +195,7 @@ settings:
       properties:
         type: string
         advanced: true
-        display_order: 13
+        display_order: 14
         help_text: |
           Change how numbers and times are written using a language code such as en, fr, de or pt-BR. Labels stay in English. Unsupported codes fall back to English.
   display_errors:
@@ -195,7 +208,7 @@ settings:
       properties:
         type: boolean
         advanced: true
-        display_order: 14
+        display_order: 15
         help_text: Show errors on screen instead of falling back to the last cached data. For debugging only.
   sentry_dsn:
     type: secret

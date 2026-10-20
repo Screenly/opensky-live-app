@@ -192,6 +192,26 @@ neither works — OpenSky's departure list does occasionally leave a flight
 out (it did for ASA815) — does it say the flight is not in the air until it
 is heard again.
 
+## Times and timezones
+
+Every time on screen carries its timezone — **Updated 12:55 AM IST**,
+**last seen 12:39 AM PDT** — so it is never ambiguous to someone reading it
+from elsewhere. Times are in the screen's own zone, worked out from its
+location (or Override Coordinates), so they are right even on a player
+whose clock runs in UTC. **Override Timezone** (advanced) sets one by name,
+such as `America/Los_Angeles`.
+
+A flight's **estimated arrival** is the exception: it is in the
+**destination's** time, as airlines and arrivals boards give it, with the
+screen's own time underneath when the two differ:
+
+> **04:59 AM**
+> HST · in 4 h 40 m
+> 07:59 AM PDT here
+
+Zones are shown by their everyday abbreviation (PDT, HST, BST, IST, AEST)
+where one exists, and by their offset otherwise (GMT+5 for the Maldives).
+
 ## Route and estimated arrival (flight mode)
 
 OpenSky's positions carry no route, so it comes from OpenSky's flight-route
