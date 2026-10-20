@@ -309,3 +309,16 @@ export function secondsSinceTakeOff(
     kmBetween(airport.lat, airport.lng, aircraft.lat, aircraft.lng) * 1000
   return metres / ((aircraft.speed + LIFT_OFF_MS) / 2)
 }
+
+/**
+ * How a list icon is turned for what the aircraft is doing — the same for
+ * every arrival, every departure — matching the ↘ / ↗ / → arrows in the
+ * headings and legend. (The glyph points up at 0°.) The map keeps each
+ * aircraft's real heading; in a list, real headings were just noise.
+ */
+export const ICON_ANGLE: Record<Motion, number> = {
+  arr: 135,
+  dep: 45,
+  pass: 90,
+  gnd: 90,
+}

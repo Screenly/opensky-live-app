@@ -5,6 +5,7 @@ import type { Airport } from './lookup'
 import type { Aircraft } from './opensky'
 import type { Route } from './route'
 import {
+  ICON_ANGLE,
   routeLine,
   secondsSinceTakeOff,
   secondsToLanding,
@@ -64,7 +65,7 @@ function rowHtml(
   const [time, caption] = when(fmt, airport, aircraft, phase)
   return (
     `<li class="row board ${phase}" data-icao24="${escapeHtml(aircraft.icao24)}" data-section="${phase}">` +
-    `<div class="icon" style="transform: rotate(${aircraft.track}deg)">${glyph}</div>` +
+    `<div class="icon" style="transform: rotate(${ICON_ANGLE[phase]}deg)">${glyph}</div>` +
     `<div class="who"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub)}</span></div>` +
     `<div class="num when">${escapeHtml(time)}${caption ? `<small>${escapeHtml(caption)}</small>` : ''}</div>` +
     `</li>`

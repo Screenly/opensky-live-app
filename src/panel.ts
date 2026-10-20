@@ -13,7 +13,14 @@ import {
 import type { Aircraft } from './opensky'
 import { journeyLine, legNow, progress, type Route } from './route'
 import { routeHtml } from './route-view'
-import { board, phaseAt, type Motion, type Phase, type Routes } from './traffic'
+import {
+  board,
+  ICON_ANGLE,
+  phaseAt,
+  type Motion,
+  type Phase,
+  type Routes,
+} from './traffic'
 
 interface Fact {
   label: string
@@ -114,7 +121,7 @@ export class Panel {
     const name = aircraft.callsign || aircraft.icao24.toUpperCase()
     return (
       `<li class="row ${this.motion(aircraft)}" data-icao24="${escapeHtml(aircraft.icao24)}">` +
-      `<div class="icon" style="transform: rotate(${aircraft.track}deg)">${this.glyph}</div>` +
+      `<div class="icon" style="transform: rotate(${ICON_ANGLE[this.motion(aircraft)]}deg)">${this.glyph}</div>` +
       `<div class="who"><b>${escapeHtml(name)}</b><span>${escapeHtml(sub ?? aircraft.country)}</span></div>` +
       `<div class="num">${escapeHtml(alt)}<small>${escapeHtml(altUnit || 'alt')}</small></div>` +
       `<div class="num">${escapeHtml(far)}<small>${escapeHtml(farUnit)}</small></div>` +
