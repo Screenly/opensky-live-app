@@ -129,7 +129,7 @@ function draw(): void {
     const centre = plan.mode === 'area' ? plan : plan.airport
     labelled =
       plan.mode === 'area'
-        ? panel.area(plan.lat, plan.lng, plan.name, radiusKm, drawn)
+        ? panel.area(plan, radiusKm, drawn, current.routes)
         : panel.airport(plan.airport, radiusKm, drawn, current.routes)
     view.frame(centre.lat, centre.lng, radiusKm * 2.3, clearArea())
     view.path('range', circlePath(centre.lat, centre.lng, radiusKm))

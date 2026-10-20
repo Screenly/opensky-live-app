@@ -136,6 +136,16 @@ The **Show Private Flights** setting (advanced) lists them too — for an
 aero club, say. Flight mode is not affected: a registration typed into
 Flight Number is followed as asked.
 
+## Where flights overhead are coming from and going to
+
+In **Around this screen** mode, each row in the list shows the flight's
+journey under its callsign — **MUC Munich → DXB Dubai** — from the same
+OpenSky flight-route service as the airport board. For a flight with stops
+it is the leg the aircraft is flying now; a route the aircraft is clearly
+not on (a reused flight number) is not shown, and the row shows the
+aircraft's country instead. Routes are looked up for the twelve nearest
+flights, in one request, and remembered on the screen.
+
 ## Where airport traffic is coming from and going to
 
 Each board row says where the flight is from or going — **From IAH

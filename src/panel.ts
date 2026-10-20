@@ -11,7 +11,7 @@ import {
   type FlightQuery,
 } from './lookup'
 import type { Aircraft } from './opensky'
-import { progress, type Route } from './route'
+import { journeyLine, legNow, progress, type Route } from './route'
 import { routeHtml } from './route-view'
 import { board, phaseAt, type Motion, type Phase, type Routes } from './traffic'
 
@@ -151,11 +151,10 @@ export class Panel {
   }
 
   area(
-    lat: number,
-    lng: number,
-    name: string,
+    { lat, lng, name }: { lat: number; lng: number; name: string },
     radiusKm: number,
     drawn: Aircraft[],
+    routes: Routes = {},
   ): Set<string> {
     const flying = drawn.filter(airborne)
     this.head(
@@ -189,7 +188,9 @@ export class Panel {
         .map((aircraft) => {
           const [value, unit] = this.distance(lat, lng, aircraft)
           const way = compass(bearing(lat, lng, aircraft.lat, aircraft.lng))
-          return { aircraft, far: [value, `${unit} ${way}`] }
+          const legs = routes[aircraft.callsign.trim().toUpperCase()] ?? []
+          const sub = journeyLine(legNow(legs, aircraft)) ?? undefined
+          return { aircraft, far: [value, `${unit} ${way}`], sub }
         }),
       'The sky is clear right now',
     )

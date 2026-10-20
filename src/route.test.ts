@@ -8,6 +8,7 @@ import {
   code,
   flightView,
   estimateFrom,
+  journeyLine,
   lastHeard,
   legNow,
   legsOf,
@@ -192,5 +193,17 @@ describe('the aircraft as last heard, from its recorded path', () => {
 
   test('a path too short to tell is no aircraft', () => {
     expect(lastHeard([[1, 34, -123, 1000]], 'x', 'X1')).toBeNull()
+  })
+})
+
+describe('a flight overhead, from and to', () => {
+  test('reads as a journey', () => {
+    const leg = {
+      airline: '',
+      from: findAirport('OMSJ')!,
+      to: findAirport('VOCI')!,
+    }
+    expect(journeyLine(leg)).toBe('SHJ Sharjah → COK Kochi')
+    expect(journeyLine(null)).toBeNull()
   })
 })

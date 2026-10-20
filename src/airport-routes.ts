@@ -2,11 +2,12 @@ import { readEdgeAppCache, writeEdgeAppCache } from '@screenly/edge-apps'
 
 import type { Airport } from './lookup'
 import { routeFor, routesFromOpenSky, type Aircraft } from './opensky'
-import type { Route } from './route'
+import { legNow, type Route } from './route'
 import { touches, type Routes } from './traffic'
 
 /*
-  Routes for the airport board, keyed by callsign. OpenSky's own flight-route
+  Routes for the airport board, and for the list around a screen, keyed by
+  callsign. OpenSky's own flight-route
   service is asked first, in one batched request for the whole board; adsbdb
   only for the few callsigns OpenSky has nothing for, or nothing that touches
   this airport. A callsign's itinerary changes rarely, so each is looked up
@@ -16,7 +17,8 @@ import { touches, type Routes } from './traffic'
 
 const CACHE_NAMESPACE = 'opensky-flight-map'
 /** One table per airport. v2: itineraries as legs, from OpenSky first. */
-const cacheKey = (airport: Airport) => `routes-v2:${airport.icao}`
+const cacheKey = (airport: Airport | null) =>
+  `routes-v2:${airport?.icao ?? 'area'}`
 const FOUND_MS = 3 * 24 * 60 * 60 * 1000
 const UNKNOWN_MS = 12 * 60 * 60 * 1000
 /** Entries kept at most; the oldest go first. */
@@ -38,8 +40,14 @@ function fresh(entry: Entry | undefined, now: number): entry is Entry {
   return now - entry.at < (entry.legs.length ? FOUND_MS : UNKNOWN_MS)
 }
 
-const touchesAny = (airport: Airport, legs: Route[]) =>
-  legs.some((leg) => touches(airport, leg))
+/**
+ * Does an itinerary fit? At an airport, it must start or end there. Around
+ * a screen, the aircraft must plausibly be flying one of its legs now.
+ */
+function fits(airport: Airport | null, legs: Route[], at: Aircraft): boolean {
+  if (airport) return legs.some((leg) => touches(airport, leg))
+  return legNow(legs, at) !== null
+}
 
 /**
  * Looks up the callsigns not already known: OpenSky for all of them at once,
@@ -47,7 +55,7 @@ const touchesAny = (airport: Airport, legs: Route[]) =>
  */
 async function lookUp(
   aircraft: Aircraft[],
-  airport: Airport,
+  airport: Airport | null,
 ): Promise<Record<string, Route[]>> {
   const planes = aircraft.map((a) => ({
     callsign: a.callsign.trim().toUpperCase(),
@@ -57,19 +65,24 @@ async function lookUp(
   const opensky = await routesFromOpenSky(planes)
   const found: Record<string, Route[]> = {}
   const unplaced: string[] = []
+  const byCallsign = new Map(planes.map((p, i) => [p.callsign, aircraft[i]!]))
   for (const { callsign } of planes) {
     const legs = opensky[callsign] ?? []
     found[callsign] = legs
-    if (!touchesAny(airport, legs)) unplaced.push(callsign)
+    if (!fits(airport, legs, byCallsign.get(callsign)!)) unplaced.push(callsign)
   }
   const fallbacks = await Promise.all(
     unplaced.slice(0, MAX_FALLBACKS).map((c) => routeFor(c)),
   )
   unplaced.slice(0, MAX_FALLBACKS).forEach((callsign, i) => {
     const route = fallbacks[i]
-    // adsbdb only replaces OpenSky's answer if it does better: touches here,
-    // or OpenSky had nothing at all.
-    if (route && (touches(airport, route) || found[callsign]!.length === 0)) {
+    // adsbdb only replaces OpenSky's answer if it does better: it fits, or
+    // OpenSky had nothing at all.
+    const better =
+      route &&
+      (fits(airport, [route], byCallsign.get(callsign)!) ||
+        found[callsign]!.length === 0)
+    if (route && better) {
       found[callsign] = [route]
     }
   })
@@ -82,7 +95,7 @@ async function lookUp(
  */
 export async function routesFor(
   aircraft: Aircraft[],
-  airport: Airport,
+  airport: Airport | null,
 ): Promise<Routes> {
   const now = Date.now()
   const key = cacheKey(airport)

@@ -303,3 +303,12 @@ export function lastHeard(
     seen: t2,
   }
 }
+
+/**
+ * Where a flight came from and where it is going, for a list: "SHJ Sharjah
+ * → COK Kochi". Null without a leg (the row shows the country instead).
+ */
+export function journeyLine(leg: Route | null): string | null {
+  if (!leg) return null
+  return `${code(leg.from)} ${cityOf(leg.from)} → ${code(leg.to)} ${cityOf(leg.to)}`
+}

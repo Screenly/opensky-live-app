@@ -2,7 +2,7 @@ import { getSettingWithDefault } from '@screenly/edge-apps'
 
 import { routesFor } from './airport-routes'
 import { boxAround, deadReckon, kmBetween } from './geo'
-import type { Airport, FlightQuery } from './lookup'
+import { isPublicCallsign, type Airport, type FlightQuery } from './lookup'
 import {
   hasCredentials,
   routeFor,
@@ -50,6 +50,9 @@ export interface Cached {
   /** Flight mode: the followed callsign's transponder, once learned. */
   hint?: string
 }
+
+/** Around a screen, routes are looked up for this many of the nearest. */
+const AREA_LOOKUPS = 12
 
 /** Aircraft keep moving along their last course for at most this long. */
 const MAX_GLIDE_S = 360
@@ -330,18 +333,23 @@ export async function fetchFor(
     .slice(0, MAX_DRAWN)
   // Where the board's arrivals come from and its departures go. A failed
   // lookup is just no route: the rows fall back to the country.
+  const includePrivate = getSettingWithDefault<boolean>('show_private', false)
   const routes =
     plan.mode === 'airport'
       ? await routesFor(
-          lookupOrder(
-            plan.airport,
-            aircraft,
-            radiusKm,
-            getSettingWithDefault<boolean>('show_private', false),
-          ),
+          lookupOrder(plan.airport, aircraft, radiusKm, includePrivate),
           plan.airport,
         )
-      : {}
+      : // Around a screen: the rows nearest the top of the list.
+        await routesFor(
+          aircraft
+            .filter(
+              (a) =>
+                airborne(a) && (includePrivate || isPublicCallsign(a.callsign)),
+            )
+            .slice(0, AREA_LOOKUPS),
+          null,
+        )
   return {
     routes,
     key,
