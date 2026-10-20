@@ -607,6 +607,19 @@
     color: var(--ink-muted);
   }
 
+  /* A clock time reads in the text face, its countdown on a line of its own. */
+  .fact .v.time {
+    font-family: system-ui, 'DejaVu Sans', sans-serif;
+    letter-spacing: -0.01em;
+    white-space: normal;
+  }
+
+  .fact .v.time small {
+    display: block;
+    margin: 0.3rem 0 0;
+    white-space: nowrap;
+  }
+
   .list-label:empty {
     display: none;
   }

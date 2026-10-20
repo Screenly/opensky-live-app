@@ -292,6 +292,8 @@ export class Panel {
                   ),
                   `in ${this.fmt.duration(ahead.remainingS)}`,
                 ],
+          // A clock time, not a figure to line up; "in 4 h 45 m" below it.
+          className: 'time',
         },
         {
           label: 'Distance to go',
