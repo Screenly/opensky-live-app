@@ -55,31 +55,38 @@ settings:
   radius_km:
     type: string
     default_value: '100'
-    title: Radius (km)
-    optional: true
-    help_text:
-      schema_version: 1
-      properties:
-        type: number
-        display_order: 4
-        help_text: How far around the screen or airport to look, in kilometres. Between 10 and 400.
-  units:
-    type: string
-    default_value: aviation
-    title: Units
+    title: Range
     optional: true
     help_text:
       schema_version: 1
       properties:
         type: select
         display_order: 5
-        help_text: How altitude, speed and distance are written.
+        help_text: How far around the screen or airport to look, in the Units chosen above — km, nm or mi.
         options:
-          - label: Aviation (ft, kt, nm)
-            value: aviation
-          - label: Metric (m, km/h, km)
+          - label: Nearby — 50
+            value: '50'
+          - label: Area — 100
+            value: '100'
+          - label: Region — 200
+            value: '200'
+  units:
+    type: string
+    default_value: metric
+    title: Units
+    optional: true
+    help_text:
+      schema_version: 1
+      properties:
+        type: select
+        display_order: 4
+        help_text: How distance, altitude and speed are written — and the unit Range is in.
+        options:
+          - label: Metric (km)
             value: metric
-          - label: Imperial (ft, mph, mi)
+          - label: Aviation (nm)
+            value: aviation
+          - label: Imperial (mi)
             value: imperial
   color_scheme:
     type: string

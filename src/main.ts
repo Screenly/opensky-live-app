@@ -17,7 +17,7 @@ import {
   type Cached,
   type Plan,
 } from './data'
-import { Formatter, resolveUnits } from './format'
+import { Formatter, rangeKm, resolveUnits } from './format'
 import { circlePath, kmBetween, nearLongitude } from './geo'
 import { clearAreaOf, MapView } from './map'
 import {
@@ -342,7 +342,7 @@ async function boot(): Promise<void> {
     glyph,
   )
 
-  const units = resolveUnits(getSettingWithDefault<string>('units', 'aviation'))
+  const units = resolveUnits(getSettingWithDefault<string>('units', 'metric'))
   // Where the screen is, first: its timezone comes from its position. The
   // bridge hands coordinates over as strings; resolvePosition converts them.
   const position = resolvePosition()
@@ -350,8 +350,7 @@ async function boot(): Promise<void> {
   fmt = new Formatter(units, resolveLocale(), resolveTimeZone(position))
   panel = new Panel(fmt, glyph)
 
-  const radius = getSettingWithDefault<number>('radius_km', 100)
-  radiusKm = Number.isFinite(radius) ? Math.min(Math.max(radius, 10), 400) : 100
+  radiusKm = rangeKm(getSettingWithDefault<number>('radius_km', 100), units)
 
   plan = await resolvePlan(say, notice)
   // A setting to fix: shown, so an operator sees it.

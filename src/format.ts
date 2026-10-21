@@ -3,7 +3,28 @@ import tzlookup from '@photostructure/tz-lookup'
 export type Units = 'aviation' | 'metric' | 'imperial'
 
 export function resolveUnits(value: string): Units {
-  return value === 'metric' || value === 'imperial' ? value : 'aviation'
+  return value === 'aviation' || value === 'imperial' ? value : 'metric'
+}
+
+const KM_PER: Record<Units, number> = {
+  metric: 1,
+  aviation: 1.852,
+  imperial: 1.609344,
+}
+
+/** A distance given in the chosen units, in kilometres: 100 nm is 185.2 km. */
+export function toKm(value: number, units: Units): number {
+  return value * KM_PER[units]
+}
+
+/**
+ * The Range setting in kilometres. It is 50, 100 or 200 in the chosen units
+ * (km, nm or mi); any other number from an older install still works. Kept
+ * between 10 and 400 km.
+ */
+export function rangeKm(setting: number, units: Units): number {
+  const km = toKm(Number.isFinite(setting) ? setting : 100, units)
+  return Math.min(Math.max(km, 10), 400)
 }
 
 const FEET_PER_METRE = 3.28084

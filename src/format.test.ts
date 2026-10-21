@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 
-import { Formatter, resolveUnits, zoneAt, zoneName } from './format'
+import { Formatter, resolveUnits, toKm, zoneAt, zoneName } from './format'
 
 describe('Formatter', () => {
   const aviation = new Formatter('aviation', 'en')
@@ -50,9 +50,20 @@ describe('Formatter', () => {
     expect(aviation.estimate(4200)).toBe('~1 h 10 min')
   })
 
-  test('unknown units fall back to aviation', () => {
-    expect(resolveUnits('furlongs')).toBe('aviation')
-    expect(resolveUnits('metric')).toBe('metric')
+  test('unknown or unset units fall back to metric', () => {
+    expect(resolveUnits('furlongs')).toBe('metric')
+    expect(resolveUnits('')).toBe('metric')
+    expect(resolveUnits('aviation')).toBe('aviation')
+  })
+
+  test('range is in the chosen units', () => {
+    expect(toKm(100, 'metric')).toBe(100)
+    expect(toKm(100, 'aviation')).toBeCloseTo(185.2)
+    expect(toKm(100, 'imperial')).toBeCloseTo(160.9, 1)
+    // Read back on screen, it is the number that was chosen.
+    expect(new Formatter('aviation', 'en').radius(toKm(100, 'aviation'))).toBe(
+      '100 nm',
+    )
   })
 })
 

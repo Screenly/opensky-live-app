@@ -18,7 +18,7 @@ const METADATA = {
 const BASE_SETTINGS = {
   mode: 'area',
   radius_km: '100',
-  units: 'aviation',
+  units: 'metric',
   color_scheme: 'dark',
   display_errors: 'false',
   // Ignored on purpose: each theme has its own fixed accent.
@@ -150,6 +150,10 @@ for (const [variant, settings] of VARIANTS) {
 */
 const ERRORS: Array<[string, Record<string, string>, Scenario?]> = [
   ['error-airport', { mode: 'airport', airport: 'XYZQ' }],
+  [
+    'error-airport-light',
+    { mode: 'airport', airport: 'XYZQ', color_scheme: 'light' },
+  ],
   ['error-flight', { mode: 'flight', flight_number: 'hello!' }],
   ['error-location', {}, { metadata: { coordinates: [0, 0], location: '' } }],
   [

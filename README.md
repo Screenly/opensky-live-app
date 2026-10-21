@@ -2,7 +2,7 @@
 
 # OpenSky Live — Screenly Edge App
 
-![The sky around the screen, with the closest aircraft listed](screenshots/opensky-flight-map-1920x1080.webp)
+![The sky around the screen, with the closest aircraft listed](screenshots/opensky-flight-map-light-1920x1080.webp)
 
 Live air traffic from [The OpenSky Network](https://opensky-network.org/),
 drawn on a full-bleed map with the numbers in glass panels. Three modes, chosen
@@ -14,8 +14,8 @@ with the **What to Show** setting:
 | **Airport**            | `mode: airport`, `airport`      | Arriving, departing and ground counts, and an Arrivals / Departures board: from or to where, and roughly when.                                 |
 | **Flight**             | `mode: flight`, `flight_number` | One flight followed across the map: what it is doing, From → To with progress, estimated arrival in the destination's time, flown path.        |
 
-![Airport mode at SFO](screenshots/opensky-flight-map-airport-1920x1080.webp)
-![Flight mode following EI105 over Ireland](screenshots/opensky-flight-map-flight-1920x1080.webp)
+![Airport mode at SFO](screenshots/opensky-flight-map-airport-light-1920x1080.webp)
+![Flight mode following EI105 over Ireland](screenshots/opensky-flight-map-flight-light-1920x1080.webp)
 
 Every aircraft is coloured by **what it is doing**. On the map it points the
 way it is flying; in the lists every arrival has the same ↘ icon, every
@@ -56,8 +56,8 @@ minutes.
 | **What to Show**                      | Around this screen | The mode (see above).                                                                                                                                                                                                                                                                                            |
 | **Airport**                           | —                  | Airport mode. An IATA or ICAO code (`LHR` or `EGLL`). The ~3,000 large and medium airports with scheduled service are bundled, so there is no lookup call.                                                                                                                                                       |
 | **Flight Number**                     | —                  | Flight mode. What is printed on a ticket (`BA283`), an ICAO callsign (`BAW283`) or a 6-character ICAO24 transponder address (`4ca7b5`). IATA numbers are translated through a bundled airline table (`BA` → `BAW`); for an airline whose callsign differs from its flight number (`BAW25M`), enter the callsign. |
-| **Radius (km)**                       | 100                | How far around the screen or airport to look, 10–400 km.                                                                                                                                                                                                                                                         |
-| **Units**                             | Aviation           | Aviation (ft / flight levels, kt, nm), metric or imperial.                                                                                                                                                                                                                                                       |
+| **Units**                             | Metric             | How distances, altitudes and speeds are written: Metric (km, m, km/h), Aviation (nm, ft and flight levels, kt) or Imperial (mi, ft, mph) — and the unit Range is in.                                                                                                                                             |
+| **Range**                             | Area — 100         | How far around the screen or airport to look, in the chosen Units: Nearby 50, Area 100 or Region 200 (so 100 km, 100 nm or 100 mi).                                                                                                                                                                              |
 | **Theme** (advanced)                  | Dark               | Dark (radar, purple `#972eff` accent) or light (paper, deep purple `#6d28d9`). Accents are fixed per theme; the Screenly accent colour is not used.                                                                                                                                                              |
 | **Show Private Flights** (adv.)       | off                | Also list aircraft flying under their registration (see _Private flights_).                                                                                                                                                                                                                                      |
 | **OpenSky Client ID / Secret** (adv.) | —                  | Optional sign-in for ten times the allowance (see _OpenSky credentials_).                                                                                                                                                                                                                                        |
@@ -293,7 +293,7 @@ signal ready, so the player keeps its previous content (see _Ready signal_).
 A flight that is simply not in the air is not an error: it gets the aircraft
 mark, its route and the next check time.
 
-![Airport not found](screenshots/opensky-flight-map-error-airport-1920x1080.webp)
+![Airport not found](screenshots/opensky-flight-map-error-airport-light-1920x1080.webp)
 
 ## Ready signal
 
@@ -383,8 +383,10 @@ OpenSky meters its API in credits, per day, per IP for anonymous use:
 | Default refresh         | 300 s     | 60 s          |
 | Fastest allowed refresh | 240 s     | 30 s          |
 
-A query for a box up to 25 square degrees costs 1 credit — a 100 km radius
-stays inside that — and a worldwide query costs 4. The app keeps to the cheap
+A query for a box up to 25 square degrees costs 1 credit and a worldwide
+query costs 4. Every Range fits in one credit except Region in nautical
+miles or miles (370 and 322 km), which costs 2 — and Region in kilometres
+north of about 59° latitude (Oslo, Helsinki, Anchorage), also 2. The app keeps to the cheap
 end:
 
 - The last reading is cached. A playlist that shows the app every minute does
