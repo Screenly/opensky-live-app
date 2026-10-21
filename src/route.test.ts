@@ -8,6 +8,7 @@ import {
   code,
   flightView,
   estimateFrom,
+  flightStatus,
   journeyLine,
   lastHeard,
   legNow,
@@ -205,5 +206,47 @@ describe('a flight overhead, from and to', () => {
     }
     expect(journeyLine(leg)).toBe('SHJ Sharjah → COK Kochi')
     expect(journeyLine(null)).toBeNull()
+  })
+})
+
+describe('what a followed flight is doing', () => {
+  const sfo = findAirport('KSFO')!
+  const hnl = findAirport('PHNL')!
+  const route = { airline: '', from: sfo, to: hnl }
+  const plane = (verticalRate: number, onGround = false) => ({
+    icao24: 'ac3cfc',
+    callsign: 'EJA888',
+    country: 'United States',
+    lat: 37.6,
+    lng: -122.5,
+    altitude: 1100,
+    onGround,
+    speed: 140,
+    track: 298,
+    verticalRate,
+    squawk: '',
+    seen: 0,
+  })
+
+  test('climbing out: departed from the route or take-off airport', () => {
+    expect(flightStatus(plane(12), route, null).text).toBe('↗ Departed SFO')
+    // A charter: no route, but OpenSky saw it take off from SFO.
+    expect(flightStatus(plane(12), null, sfo)).toEqual({
+      text: '↗ Departed SFO',
+      departed: true,
+    })
+    expect(flightStatus(plane(12), null, null).text).toBe('↗ Climbing')
+  })
+
+  test('cruising and descending name the destination when known', () => {
+    expect(flightStatus(plane(0), route, null).text).toBe('→ Cruising to HNL')
+    expect(flightStatus(plane(-8), route, null).text).toBe(
+      '↘ Descending into HNL',
+    )
+    expect(flightStatus(plane(0), null, sfo).text).toBe('→ Cruising')
+  })
+
+  test('on the ground', () => {
+    expect(flightStatus(plane(0, true), route, null).text).toBe('On the ground')
   })
 })

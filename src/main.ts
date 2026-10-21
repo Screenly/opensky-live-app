@@ -35,7 +35,8 @@ import {
   fillNotice,
   type NoticeContent,
 } from './notice'
-import { legend, Panel } from './panel'
+import { legend } from './legend'
+import { Panel } from './panel'
 import { resolveLocale, resolvePosition, resolveTimeZone } from './place'
 import { resolvePlan } from './plan'
 import { motionOf } from './traffic'
@@ -102,14 +103,13 @@ function draw(): void {
     const now = locate(followed)
     const known = route(followed)
     const { query } = plan
-    labelled = panel.flight(
-      query,
-      followed,
-      screenAt,
-      known,
+    labelled = panel.flight(query, followed, screenAt, {
+      route: known,
       now,
-      current.lostAt,
-    )
+      lostSince: current.lostAt,
+      airline: current.airline,
+      origin: current.origin,
+    })
     // Out of receiver range: drawn faded, as an estimate.
     stage.classList.toggle('estimated', Boolean(current.lostAt))
     say(

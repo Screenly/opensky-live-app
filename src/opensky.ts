@@ -290,3 +290,38 @@ export async function departuresFrom(
     return []
   }
 }
+
+/**
+ * Where OpenSky last saw an aircraft take off, and when (Unix seconds), from
+ * its flight records for the last day — an origin for a flight with no
+ * published route. "When" is first seen, which at airports with ground
+ * coverage includes taxiing. Costs credits from the flights allowance, and
+ * is asked once per flight; any failure is no origin.
+ */
+export async function lastTakeOff(
+  icao24: string,
+  now: number,
+): Promise<{ icao: string; at: number } | null> {
+  try {
+    const begin = Math.floor(now - 24 * 60 * 60)
+    const response = await get(
+      `/flights/aircraft?icao24=${encodeURIComponent(icao24)}&begin=${begin}&end=${Math.floor(now)}`,
+    )
+    if (!response.ok) return null
+    const body = (await response.json()) as unknown
+    if (!Array.isArray(body)) return null
+    const latest = body
+      .map((x) => x as Record<string, unknown>)
+      .filter((x) => typeof x.estDepartureAirport === 'string')
+      .sort((a, b) => Number(b.firstSeen) - Number(a.firstSeen))[0]
+    return latest
+      ? {
+          icao: String(latest.estDepartureAirport),
+          at: Number(latest.firstSeen),
+        }
+      : null
+  } catch (error) {
+    console.warn('No take-off record for', icao24, error)
+    return null
+  }
+}

@@ -5,14 +5,23 @@ import { airborne } from './data'
 import { zoneAt, zoneName, type Formatter } from './format'
 import { bearing, compass, kmBetween } from './geo'
 import {
+  findAirport,
   isPublicCallsign,
+  privateJetLine,
+  privateJetOperator,
   shortAirportName,
   type Airport,
   type FlightQuery,
 } from './lookup'
 import type { Aircraft } from './opensky'
-import { journeyLine, legNow, progress, type Route } from './route'
-import { routeHtml } from './route-view'
+import {
+  flightStatus,
+  journeyLine,
+  legNow,
+  progress,
+  type Route,
+} from './route'
+import { originHtml, routeHtml } from './route-view'
 import {
   board,
   ICON_ANGLE,
@@ -30,6 +39,17 @@ interface Fact {
   marker?: Motion
 }
 
+/** What is known about a followed flight beyond its state vector. */
+export interface FlightAbout {
+  route: Route | null
+  /** Where it is now (estimated, when out of range). */
+  now: { lat: number; lng: number }
+  lostSince?: number
+  airline?: string
+  /** Where OpenSky saw it take off, when it has no known route. */
+  origin?: { icao: string; at: number } | null
+}
+
 interface Row {
   aircraft: Aircraft
   far: [string, string]
@@ -37,38 +57,10 @@ interface Row {
   sub?: string
 }
 
-/*
-  Colour means what an aircraft is doing, everywhere on the screen: the list
-  icons, the map, the board's section keys and the legend all use the same
-  four, and a word and arrow always say it too, so colour is never the only
-  cue.
-*/
-const LEGEND: Record<'airport' | 'sky', Record<Motion, string>> = {
-  airport: {
-    arr: '↘ Arriving',
-    dep: '↗ Departing',
-    pass: '→ Passing',
-    gnd: 'Ground',
-  },
-  sky: {
-    arr: '↘ Descending',
-    dep: '↗ Climbing',
-    pass: '→ Level',
-    gnd: 'Ground',
-  },
-}
 const NONE: [string, string] = ['—', '']
 
 function $(id: string): HTMLElement {
   return document.getElementById(id)!
-}
-
-/** The colour legend: arriving/departing at an airport, else by vertical speed. */
-export function legend(atAirport: boolean): void {
-  const labels = LEGEND[atAirport ? 'airport' : 'sky']
-  for (const motion of Object.keys(labels) as Motion[]) {
-    $(`band-${motion}`).textContent = labels[motion]
-  }
 }
 
 /**
@@ -196,7 +188,8 @@ export class Panel {
           const [value, unit] = this.distance(lat, lng, aircraft)
           const way = compass(bearing(lat, lng, aircraft.lat, aircraft.lng))
           const legs = routes[aircraft.callsign.trim().toUpperCase()] ?? []
-          const sub = journeyLine(legNow(legs, aircraft)) ?? undefined
+          const sub =
+            journeyLine(legNow(legs, aircraft)) ?? privateJetLine(aircraft)
           return { aircraft, far: [value, `${unit} ${way}`], sub }
         }),
       'The sky is clear right now',
@@ -254,15 +247,23 @@ export class Panel {
    * was last heard: the position, progress and arrival are estimates from
    * then.
    */
-  private flightSub(
-    target: Aircraft,
-    route: Route | null,
-    lostSince?: number,
-  ): string {
-    const who = route?.airline || target.country
-    if (!lostSince) return `${who} · ${target.icao24.toUpperCase()}`
-    const seen = this.fmt.clock(new Date(lostSince))
-    return `${who} · out of receiver range, last seen ${seen}`
+  private flightSub(target: Aircraft, about: FlightAbout): string {
+    const { route, lostSince, origin } = about
+    const jet = privateJetOperator(target.callsign)
+    const operator = about.airline || route?.airline || jet
+    const who = jet ? `${operator} · Private jet` : operator || target.country
+    if (lostSince) {
+      const seen = this.fmt.clock(new Date(lostSince))
+      return `${who} · out of receiver range, last seen ${seen}`
+    }
+    // What it is doing: "↗ Departed SFO · ~3 min ago", "→ Cruising to HNL".
+    const from = origin ? findAirport(origin.icao) : null
+    const status = flightStatus(target, route, from)
+    const ago =
+      status.departed && origin && !route
+        ? ` · ${this.fmt.estimate(Date.now() / 1000 - origin.at)} ago`
+        : ''
+    return `${who} · ${status.text}${ago}`
   }
 
   /**
@@ -295,20 +296,24 @@ export class Panel {
     query: FlightQuery,
     target: Aircraft,
     screenAt: { lat: number; lng: number } | null,
-    route: Route | null,
-    now: { lat: number; lng: number },
-    lostSince?: number,
+    about: FlightAbout,
   ): Set<string> {
+    const { route, now } = about
     const name = target.callsign || query.label
     this.head(
       name === query.label ? 'Tracking' : `Tracking ${query.label}`,
       name,
-      this.flightSub(target, route, lostSince),
+      this.flightSub(target, about),
     )
     const ahead = route ? progress(route, now, target.speed) : null
-    $('route').hidden = !route
-    if (route && ahead)
+    // No route (a charter): where it took off, and an open destination.
+    const from = route ? null : about.origin && findAirport(about.origin.icao)
+    $('route').hidden = !route && !from
+    if (route && ahead) {
       $('route').innerHTML = routeHtml(route, ahead, this.glyph)
+    } else if (from) {
+      $('route').innerHTML = originHtml(from)
+    }
 
     const facts: Fact[] = [
       {

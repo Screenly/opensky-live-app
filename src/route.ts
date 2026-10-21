@@ -312,3 +312,37 @@ export function journeyLine(leg: Route | null): string | null {
   if (!leg) return null
   return `${code(leg.from)} ${cityOf(leg.from)} → ${code(leg.to)} ${cityOf(leg.to)}`
 }
+
+/** Vertical speed past which an aircraft is climbing or descending (~300 ft/min). */
+const CLIMB_MS = 1.5
+
+/**
+ * What a followed flight is doing, in words, with the airports involved:
+ * "↗ Departed SFO", "→ Cruising to HNL", "↘ Descending into HNL", "On the
+ * ground". `origin` is where OpenSky saw it take off, for flights with no
+ * known route. The caller adds how long ago it departed.
+ */
+export function flightStatus(
+  at: Aircraft,
+  route: Route | null,
+  origin: RoutePlace | null,
+): { text: string; departed: boolean } {
+  if (at.onGround) return { text: 'On the ground', departed: false }
+  const from = route?.from ?? origin
+  const to = route?.to
+  if (at.verticalRate >= CLIMB_MS) {
+    return from
+      ? { text: `↗ Departed ${code(from)}`, departed: true }
+      : { text: '↗ Climbing', departed: false }
+  }
+  if (at.verticalRate <= -CLIMB_MS) {
+    return {
+      text: to ? `↘ Descending into ${code(to)}` : '↘ Descending',
+      departed: false,
+    }
+  }
+  return {
+    text: to ? `→ Cruising to ${code(to)}` : '→ Cruising',
+    departed: false,
+  }
+}

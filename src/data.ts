@@ -10,13 +10,13 @@ import {
   statesEverywhere,
   statesFor,
   statesIn,
-  trackFor,
   type Aircraft,
   type Snapshot,
   type Waypoint,
 } from './opensky'
+import { whereFromAndTo } from './followed'
 import { notInLiveData, stillFlying } from './recover'
-import { estimateFrom, legNow, plausible, type Route } from './route'
+import { estimateFrom, type Route } from './route'
 import { lookupOrder, type Routes } from './traffic'
 
 /** What the screen is watching, worked out once from the settings. */
@@ -49,6 +49,15 @@ export interface Cached {
   checkedAt?: number
   /** Flight mode: the followed callsign's transponder, once learned. */
   hint?: string
+  /** Flight mode: who flies it, when known (adsbdb), route or not. */
+  airline?: string
+  /**
+   * Flight mode: where OpenSky saw the followed aircraft take off, and when
+   * (Unix seconds) — the origin when no route is known (charters, private
+   * flights). originFor is the transponder it was looked up for.
+   */
+  origin?: { icao: string; at: number } | null
+  originFor?: string
 }
 
 /** Around a screen, routes are looked up for this many of the nearest. */
@@ -60,14 +69,6 @@ const MAX_GLIDE_S = 360
 const MAX_DRAWN = 300
 /** Neighbours kept around a followed flight, and the box it is re-found in. */
 const FLIGHT_CONTEXT_KM = 300
-/**
- * How often a flown path is refetched. Paths cost 4 credits each from their
- * own allowance: every 30 minutes is 192 a day, inside the anonymous 400;
- * signed in, every 10 minutes is 576 of 4,000.
- */
-function trailRefreshMs(): number {
-  return (hasCredentials() ? 10 : 30) * 60 * 1000
-}
 /** A followed flight is looked for near its last position for this long. */
 const RECENT_MS = 30 * 60 * 1000
 
@@ -258,59 +259,6 @@ async function routeWhileGrounded(
     if (route) return { route, routeFor: callsign }
   }
   return { route: null, routeFor: query.callsigns[0] ?? '' }
-}
-
-/**
- * Where a followed flight has been, and where it is going. The trail is
- * refetched every ten minutes; the route once per callsign, since it does not
- * change mid-flight.
- */
-async function whereFromAndTo(
-  found: Aircraft,
-  previous: Cached | null,
-  fetchedAt: number,
-): Promise<Pick<Cached, 'trail' | 'trailAt' | 'route' | 'routeFor'>> {
-  const sameFlight = previous?.target === found.icao24
-  const trailDue =
-    fetchedAt - (sameFlight ? previous.trailAt : 0) > trailRefreshMs()
-  const callsign = found.callsign.toUpperCase()
-  const routeKnown = previous !== null && previous.routeFor === callsign
-
-  // Both at once: the first screen, and its ready signal, wait for them.
-  const [fetchedTrail, fetchedRoute] = await Promise.all([
-    trailDue ? trackFor(found.icao24) : null,
-    !routeKnown && callsign ? fittingRoute(callsign, found) : null,
-  ])
-
-  const keptTrail = sameFlight ? previous.trail : []
-  return {
-    // An attempt counts even when it fails, so a missing path is not retried
-    // (and paid for) on every refresh. No answer keeps the trail drawn.
-    trail: fetchedTrail ?? keptTrail,
-    trailAt: trailDue ? fetchedAt : sameFlight ? previous.trailAt : 0,
-    route: routeKnown ? (previous.route ?? null) : fetchedRoute,
-    routeFor: callsign,
-  }
-}
-
-/**
- * A followed flight's route: the leg of OpenSky's itinerary the aircraft is
- * plausibly flying now, else adsbdb's route if that fits, else none — a
- * route the aircraft is clearly not flying is worse than no route at all.
- * adsbdb is asked alongside either way, for the airline's name, which
- * OpenSky's route service does not give.
- */
-async function fittingRoute(
-  callsign: string,
-  at: Aircraft,
-): Promise<Route | null> {
-  const [opensky, adsbdb] = await Promise.all([
-    routesFromOpenSky([{ callsign, lat: at.lat, lng: at.lng }]),
-    routeFor(callsign),
-  ])
-  const leg = legNow(opensky[callsign] ?? [], at)
-  if (leg) return { ...leg, airline: adsbdb?.airline ?? '' }
-  return adsbdb && plausible(adsbdb, at) ? adsbdb : null
 }
 
 /** One reading for the plan. Throws on any fetch failure; the caller decides. */

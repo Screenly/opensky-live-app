@@ -1,7 +1,7 @@
 import { escapeHtml } from '@screenly/edge-apps'
 
 import type { Formatter } from './format'
-import type { Airport } from './lookup'
+import { privateJetLine, type Airport } from './lookup'
 import type { Aircraft } from './opensky'
 import type { Route } from './route'
 import {
@@ -61,7 +61,10 @@ function rowHtml(
   legs: Route[] | undefined,
 ): string {
   const name = aircraft.callsign || aircraft.icao24.toUpperCase()
-  const sub = routeLine(airport, phase, legs) ?? aircraft.country
+  const sub =
+    routeLine(airport, phase, legs) ??
+    privateJetLine(aircraft) ??
+    aircraft.country
   const [time, caption] = when(fmt, airport, aircraft, phase)
   return (
     `<li class="row board ${phase}" data-icao24="${escapeHtml(aircraft.icao24)}" data-section="${phase}">` +

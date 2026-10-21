@@ -33,3 +33,16 @@ export function noticeRouteHtml(route: Route): string {
     ` <span>${escapeHtml(cityOf(at))}</span></span>`
   return `${end(route.from, 'from')}<span class="arrow" aria-label="to">→</span>${end(route.to, 'to')}`
 }
+
+/**
+ * The From → ? line for a flight with no published route (a charter): where
+ * OpenSky saw it take off, and an open end where the destination would be.
+ */
+export function originHtml(from: Route['from']): string {
+  return (
+    `<div class="end from"><b>${escapeHtml(code(from))}</b>` +
+    `<span>${escapeHtml(cityOf(from))}</span></div>` +
+    `<div class="bar open"></div>` +
+    `<div class="end to unknown"><b>?</b><span>Not published</span></div>`
+  )
+}

@@ -562,6 +562,16 @@
     background: var(--rule);
   }
 
+  /* No published destination: an open, dashed bar to a "?". */
+  .route .bar.open {
+    background: none;
+    border-top: 0.2rem dashed var(--rule);
+  }
+
+  .route .end.unknown b {
+    color: var(--ink-muted);
+  }
+
   .route .done {
     height: 100%;
     border-radius: inherit;

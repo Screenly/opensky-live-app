@@ -3,6 +3,8 @@ import { describe, expect, test } from 'bun:test'
 import {
   findAirport,
   isPublicCallsign,
+  privateJetLine,
+  privateJetOperator,
   parseFlightQuery,
   shortAirportName,
 } from './lookup'
@@ -72,5 +74,21 @@ describe('isPublicCallsign', () => {
     for (const c of ['N780SP', 'N25JX', 'OEELK', 'GABCD', '']) {
       expect(isPublicCallsign(c)).toBe(false)
     }
+  })
+})
+
+describe('private jets', () => {
+  test('business-jet operators are named and labelled', () => {
+    expect(privateJetOperator('EJA888')).toBe('NetJets')
+    expect(privateJetOperator('LXJ431')).toBe('Flexjet')
+    expect(privateJetLine({ callsign: 'EJA888' })).toBe('Private jet · NetJets')
+  })
+
+  test('airlines and registrations are not', () => {
+    expect(privateJetOperator('UAL1050')).toBeNull()
+    expect(privateJetOperator('EXS123')).toBeNull() // Jet2, an airline
+    // A registration is private, but its owner is never named.
+    expect(privateJetOperator('N780SP')).toBeNull()
+    expect(privateJetLine({ callsign: 'UAL1050' })).toBeUndefined()
   })
 })

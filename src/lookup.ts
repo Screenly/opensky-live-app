@@ -105,3 +105,34 @@ function iataCallsigns(compact: string): string[] {
 export function isPublicCallsign(callsign: string): boolean {
   return /^[A-Z]{3}\d[0-9A-Z]{0,3}$/.test(callsign.trim().toUpperCase())
 }
+
+/**
+ * Business-jet operators — fractional ownership and private charter — by the
+ * three-letter code their flights use, each confirmed against adsbdb. Their
+ * flights are private jets: no published route, and the passengers' own
+ * plans. The operator is a company and named; owners are never looked up.
+ */
+const PRIVATE_JET_OPERATORS: Record<string, string> = {
+  EJA: 'NetJets',
+  NJE: 'NetJets Europe',
+  LXJ: 'Flexjet',
+  VJT: 'VistaJet',
+  XOJ: 'XOJET',
+  GAJ: 'Gama Aviation',
+  JRE: 'flyExclusive',
+}
+
+/** The business-jet operator flying this callsign, or null if it is not one. */
+export function privateJetOperator(callsign: string): string | null {
+  const c = callsign.trim().toUpperCase()
+  if (!isPublicCallsign(c)) return null
+  return PRIVATE_JET_OPERATORS[c.slice(0, 3)] ?? null
+}
+
+/** A list's line under a private jet's callsign: "Private jet · NetJets". */
+export function privateJetLine(aircraft: {
+  callsign: string
+}): string | undefined {
+  const operator = privateJetOperator(aircraft.callsign)
+  return operator ? `Private jet · ${operator}` : undefined
+}

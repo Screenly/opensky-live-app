@@ -132,6 +132,14 @@ table of airline codes, which would be missing newer airlines (Breeze, JSX)
 and hide their flights. Business-jet charters and some military flights use
 the same shape (NetJets "EJA", the RAF's "RRR") and are listed.
 
+Flights by business-jet operators — NetJets, Flexjet, VistaJet, XOJET,
+Gama Aviation, flyExclusive — use the airline shape and are listed, labelled
+**Private jet · Flexjet**; in flight mode, **Flexjet · Private jet**, with
+the airport OpenSky saw it take off from and "Not published" for where it
+is going. The operator, a company, is named; owners are never looked up.
+The list of operator codes is short and each code is confirmed against
+adsbdb; a code not on it reads as an ordinary flight.
+
 The **Show Private Flights** setting (advanced) lists them too — for an
 aero club, say. Flight mode is not affected: a registration typed into
 Flight Number is followed as asked.
