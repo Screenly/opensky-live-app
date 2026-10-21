@@ -182,8 +182,9 @@ export class Panel {
     ])
     return this.rows(
       'Closest to this screen',
+      // The air only: aircraft on the ground are on the map, not the list.
       drawn
-        .filter((a) => this.listable(a))
+        .filter((a) => airborne(a) && this.listable(a))
         .map((aircraft) => {
           const [value, unit] = this.distance(lat, lng, aircraft)
           const way = compass(bearing(lat, lng, aircraft.lat, aircraft.lng))

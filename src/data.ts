@@ -272,11 +272,9 @@ export async function fetchFor(
 
   const { lat, lng } = plan.mode === 'area' ? plan : plan.airport
   const snapshot = await statesIn(boxAround(lat, lng, radiusKm))
-  const showGround =
-    plan.mode === 'airport' ||
-    getSettingWithDefault<boolean>('show_ground', false)
+  // Aircraft on the ground are always drawn, in both modes; they are
+  // counted only at an airport, and never listed.
   const aircraft = within(lat, lng, radiusKm, snapshot.aircraft)
-    .filter((a) => showGround || airborne(a))
     .sort(byDistanceFrom(lat, lng))
     .slice(0, MAX_DRAWN)
   // Where the board's arrivals come from and its departures go. A failed
