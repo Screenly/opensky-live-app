@@ -8,17 +8,19 @@ Live air traffic from [The OpenSky Network](https://opensky-network.org/),
 drawn on a full-bleed map with the numbers in glass panels. Three modes, chosen
 with the **What to Show** setting:
 
-| Mode                   | Setting values                  | Shows                                                                                                                                         |
-| ---------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Around this screen** | `mode: area`, `radius_km`       | Every aircraft within the radius, the closest listed, highest / fastest / closest.                                                            |
-| **Airport**            | `mode: airport`, `airport`      | Arriving, departing and on-ground counts, and the inbound and outbound traffic.                                                               |
-| **Flight**             | `mode: flight`, `flight_number` | One flight followed across the map: From → To (e.g. MLE Malé → DEL Delhi), progress, estimated arrival, flown path, altitude, speed, heading. |
+| Mode                   | Setting values                  | Shows                                                                                                                                          |
+| ---------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Around this screen** | `mode: area`, `radius_km`       | Every aircraft within the radius; highest, fastest and closest; the closest listed with where each is from and going (MUC Munich → DXB Dubai). |
+| **Airport**            | `mode: airport`, `airport`      | Arriving, departing and ground counts, and an Arrivals / Departures board: from or to where, and roughly when.                                 |
+| **Flight**             | `mode: flight`, `flight_number` | One flight followed across the map: what it is doing, From → To with progress, estimated arrival in the destination's time, flown path.        |
 
 ![Airport mode at SFO](screenshots/opensky-flight-map-airport-1920x1080.webp)
 ![Flight mode following EI105 over Ireland](screenshots/opensky-flight-map-flight-1920x1080.webp)
 
-Every aircraft is coloured by **what it is doing** and drawn pointing along
-its track. Its altitude is shown as a number, in its tag and in the list.
+Every aircraft is coloured by **what it is doing**. On the map it points the
+way it is flying; in the lists every arrival has the same ↘ icon, every
+departure ↗ and every level flight →, so the list reads cleanly. Its
+altitude is shown as a number, in its map tag and in the list.
 That number is OpenSky's pressure altitude, worked out from air pressure on a
 standard day, not height above the ground, so an aircraft on short final or
 on a high-pressure day can read 0 or below sea level while still flying.
@@ -27,41 +29,45 @@ reporting itself on the ground shows **GND**. Right after touchdown a
 transponder can take a few seconds to switch to "on the ground", so a landing
 aircraft may read <100 ft briefly before it becomes GND.
 
-| Colour | At an airport | Anywhere else |
-| ------ | ------------- | ------------- |
-| Orange | ↘ Arriving    | ↘ Descending  |
-| Green  | ↗ Departing   | ↗ Climbing    |
-| Blue   | → Passing     | → Level       |
-| Grey   | Ground        | Ground        |
+| Colour (dark theme / light theme)   | At an airport | Anywhere else |
+| ----------------------------------- | ------------- | ------------- |
+| Orange `#cc7200` / brown `#6b3903`  | ↘ Arriving    | ↘ Descending  |
+| Green `#7ac869` / green `#297613`   | ↗ Departing   | ↗ Climbing    |
+| Sky blue `#a6e1fe` / teal `#055e7c` | → Passing     | → Level       |
+| Grey `#8f98a8` / grey `#5a606b`     | Ground        | Ground        |
 
-Each meaning keeps the same hue in both themes; the followed flight wears
-the purple accent. The palette was chosen with the dataviz validator (all
-pairs, accent included): colour-blind separation ΔE 12 dark / 9.5 light,
-normal vision 20.5 / 17.9, against targets of 8 and 15. Words and arrows
-(the legend, the board's ↘ Arrivals / ↗ Departures headings) say the same thing, so colour
-is never the only cue. Between refreshes each one
-keeps moving along its last known course and speed, so the map is alive even
-though OpenSky is only asked every few minutes.
+Each meaning keeps the same hue family in both themes, darker in the light
+theme so it holds AA contrast on paper; the followed flight wears the purple
+accent. The palette was chosen with the dataviz validator (all pairs, accent
+included): colour-blind separation ΔE 12 dark / 9.5 light, normal vision
+20.5 / 17.9, against targets of 8 and 15. Words and arrows (the legend, the
+board's ↘ Arrivals / ↗ Departures headings) say the same thing, so colour is
+never the only cue. Away from an airport, climbing and descending mean faster
+than about 300 ft/min.
+
+Between refreshes each aircraft keeps moving along its last known course and
+speed, so the map is alive even though OpenSky is only asked every few
+minutes.
 
 ## Settings
 
-- **Airport** takes an IATA or ICAO code (`LHR` or `EGLL`). The ~3,000 large
-  and medium airports with scheduled service are bundled, so there is no lookup
-  call.
-- **Flight Number** takes what is printed on a ticket (`BA283`), an ICAO
-  callsign (`BAW283`) or a 6-character ICAO24 transponder address (`4ca7b5`).
-  Aircraft transmit ICAO callsigns, so IATA flight numbers are translated
-  through a bundled airline table (`BA` → `BAW`). Some airlines fly under
-  alphanumeric callsigns that differ from the flight number (`BAW25M`); for
-  those, enter the callsign itself.
-- **Units**: aviation (ft / flight levels, kt, nm), metric or imperial.
-- **Theme** (advanced): dark (radar, purple `#972eff` accent) or light
-  (paper, deep purple `#6d28d9` accent). The accents are fixed per theme.
-- **OpenSky Client ID / Secret** (optional): an API client from the OpenSky
-  account page. See _Credits and refresh_ below.
-- **Override Coordinates**: centres _Around this screen_ somewhere other than
-  the player's own position, and is used for the "From this screen" distance in
-  flight mode.
+| Setting                               | Default            | What it does                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------- | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **What to Show**                      | Around this screen | The mode (see above).                                                                                                                                                                                                                                                                                            |
+| **Airport**                           | —                  | Airport mode. An IATA or ICAO code (`LHR` or `EGLL`). The ~3,000 large and medium airports with scheduled service are bundled, so there is no lookup call.                                                                                                                                                       |
+| **Flight Number**                     | —                  | Flight mode. What is printed on a ticket (`BA283`), an ICAO callsign (`BAW283`) or a 6-character ICAO24 transponder address (`4ca7b5`). IATA numbers are translated through a bundled airline table (`BA` → `BAW`); for an airline whose callsign differs from its flight number (`BAW25M`), enter the callsign. |
+| **Radius (km)**                       | 100                | How far around the screen or airport to look, 10–400 km.                                                                                                                                                                                                                                                         |
+| **Units**                             | Aviation           | Aviation (ft / flight levels, kt, nm), metric or imperial.                                                                                                                                                                                                                                                       |
+| **Show Aircraft on the Ground**       | off                | Around this screen: also draw aircraft taxiing or parked. Airport mode always counts them.                                                                                                                                                                                                                       |
+| **Theme** (advanced)                  | Dark               | Dark (radar, purple `#972eff` accent) or light (paper, deep purple `#6d28d9`). Accents are fixed per theme; the Screenly accent colour is not used.                                                                                                                                                              |
+| **Show Private Flights** (adv.)       | off                | Also list aircraft flying under their registration (see _Private flights_).                                                                                                                                                                                                                                      |
+| **OpenSky Client ID / Secret** (adv.) | —                  | Optional sign-in for ten times the allowance (see _OpenSky credentials_).                                                                                                                                                                                                                                        |
+| **Refresh Interval** (adv.)           | 300 s / 60 s       | Seconds between OpenSky requests; blank is 300 anonymously, 60 signed in, and never faster than 240 / 30.                                                                                                                                                                                                        |
+| **Override Coordinates** (adv.)       | —                  | Centres _Around this screen_ elsewhere (`51.4700,-0.4543`); also sets the screen's timezone and the "From this screen" distance in flight mode.                                                                                                                                                                  |
+| **Override Timezone** (adv.)          | —                  | The timezone for times on screen (`America/Los_Angeles`); blank uses the screen's location.                                                                                                                                                                                                                      |
+| **Override Locale** (adv.)            | `en`               | How numbers and times are written (`fr`, `de`, `pt-BR`). Labels stay in English.                                                                                                                                                                                                                                 |
+| **Display Errors** (adv.)             | off                | Show OpenSky errors on screen instead of the last good reading. For debugging.                                                                                                                                                                                                                                   |
+| **Sentry Client Key**                 | —                  | Error reporting, global to the account.                                                                                                                                                                                                                                                                          |
 
 ## The airport board
 
@@ -129,8 +135,8 @@ counts, not in the "closest to this screen" list, and never labelled.
 A flight counts as public when its callsign has an operator's three-letter
 code and a number (UAL1050, SKW425X, MXY812). The shape is the test, not a
 table of airline codes, which would be missing newer airlines (Breeze, JSX)
-and hide their flights. Business-jet charters and some military flights use
-the same shape (NetJets "EJA", the RAF's "RRR") and are listed.
+and hide their flights. Some military flights use the same shape (the RAF's
+"RRR") and are listed like any other.
 
 Flights by business-jet operators — NetJets, Flexjet, VistaJet, XOJET,
 Gama Aviation, flyExclusive — use the airline shape and are listed, labelled
@@ -175,9 +181,10 @@ descent into Gatwick looks like a descent into Heathrow from the map alone —
 so it is left off this board and its counts, and drawn as passing on the
 map.
 
-Rows with no usable route show the aircraft's country: private aircraft
-flying under their registration, military flights, and callsigns neither
-source knows.
+Rows with no usable route show **Private jet · Flexjet** for a business-jet
+operator, and otherwise the aircraft's country: military flights, reused
+flight numbers, and callsigns neither source knows. (Aircraft flying under
+their registration are not listed at all unless Show Private Flights is on.)
 
 Each callsign is looked up once per airport and remembered on the screen
 for three days (twelve hours if unknown); up to 30 new callsigns per
@@ -230,7 +237,13 @@ screen's own time underneath when the two differ:
 Zones are shown by their everyday abbreviation (PDT, HST, BST, IST, AEST)
 where one exists, and by their offset otherwise (GMT+5 for the Maldives).
 
-## Route and estimated arrival (flight mode)
+## The flight page (flight mode)
+
+Under the callsign, the panel says who flies it and what it is doing:
+**Alaska Airlines · → Cruising to HNL**, **NetJets · Private jet · ↗ Departed
+SFO · ~7 min ago**, **↘ Descending into HNL**, **On the ground** — or, when
+out of receiver range, **out of receiver range, last seen 12:39 AM PDT**.
+The airline is named even when its route is not known.
 
 OpenSky's positions carry no route, so it comes from OpenSky's flight-route
 service (see above), using the leg of the itinerary the aircraft is actually
@@ -251,9 +264,11 @@ once per callsign and cached.
   times: that would need a paid schedule API.
 - A callsign is sometimes reused for a different leg. If the aircraft is not
   roughly between the two airports, the route is treated as wrong and hidden.
-- If adsbdb doesn't know the callsign (private flights, some airlines) or
-  can't be reached, the panel shows the squawk and distance from this screen
-  instead, as before.
+- With no route — a charter, or a callsign neither source knows — the panel
+  shows the airport OpenSky saw it take off from and **? Not published** for
+  the destination (looked up once per flight, from OpenSky's flight records),
+  and the squawk and distance from this screen in place of the arrival and
+  distance to go.
 
 ## When something is wrong
 
@@ -261,15 +276,17 @@ A setting the app can't use gets a full-screen notice instead of an empty
 map: a warning mark, what is wrong in plain words, and a **How to fix** hint
 naming the exact setting and quoting what was typed.
 
-| Situation                    | Notice                                                       |
-| ---------------------------- | ------------------------------------------------------------ |
-| Unknown airport code         | Airport not found · Settings › Airport "XYZQ"                |
-| Airport mode with no airport | No airport set · Settings › Airport                          |
-| Unreadable flight number     | Not a flight number · Settings › Flight Number "hello!"      |
-| Flight mode with no flight   | No flight set · Settings › Flight Number                     |
-| No screen location           | No location set · Settings › Override Coordinates            |
-| Bad override coordinates     | Coordinates not understood · Settings › Override Coordinates |
-| Start-up fault               | Something went wrong (reported to Sentry when configured)    |
+| Situation                    | Notice                                                                            |
+| ---------------------------- | --------------------------------------------------------------------------------- |
+| Unknown airport code         | Airport not found · Settings › Airport "XYZQ"                                     |
+| Airport mode with no airport | No airport set · Settings › Airport                                               |
+| Unreadable flight number     | Not a flight number · Settings › Flight Number "hello!"                           |
+| Flight mode with no flight   | No flight set · Settings › Flight Number                                          |
+| No screen location           | No location set · Settings › Override Coordinates                                 |
+| Bad override coordinates     | Coordinates not understood · Settings › Override Coordinates                      |
+| Only one of client ID/secret | Client ID and secret both needed · Settings › OpenSky Client ID and Client Secret |
+| OpenSky refuses the sign-in  | Sign-in not accepted · Settings › OpenSky Client ID and Client Secret             |
+| Start-up fault               | Something went wrong (reported to Sentry when configured)                         |
 
 OpenSky being down with nothing cached is not shown at all: the app doesn't
 signal ready, so the player keeps its previous content (see _Ready signal_).
@@ -331,7 +348,7 @@ counted per account.
 That is all. With both filled in, the app signs in (OAuth2 client
 credentials), sends the 30-minute token with every OpenSky request and renews
 it as needed. The status line at the bottom says which mode it is in:
-`Updated 12:04 · OpenSky, signed in` or `· OpenSky, anonymous`.
+`Updated 12:04 AM IST · OpenSky, signed in` or `· OpenSky, anonymous`.
 
 | Situation                        | What the screen does                                    |
 | -------------------------------- | ------------------------------------------------------- |
@@ -378,6 +395,10 @@ end:
 - A flight that is not airborne is checked again after 20 minutes (5 with a
   client), not every refresh.
 - A `429` honours OpenSky's `X-Rate-Limit-Retry-After-Seconds`.
+- Routes (OpenSky's flight-route service, adsbdb) use no credits.
+- Flight records — a charter's take-off airport, or finding a flight that is
+  already out of range — come from the separate flights allowance, and are
+  asked once per flight.
 
 Sign-in is OAuth2 client credentials; OpenSky no longer accepts username and
 password. Tokens are reused until a minute before they expire.
@@ -472,25 +493,32 @@ the API is public — so only the data half of the diagram applies:
 | OK     | —                  | Cache it, draw it                          |
 | Failed | on                 | Show the error                             |
 | Failed | off, cache present | Draw the last reading, status marked stale |
-| Failed | off, no cache      | Say it is unavailable                      |
+| Failed | off, no cache      | Don't signal ready; retry every 30 s       |
 
-`screenly.signalAbort()` does not exist yet (Phorge T10903), so the last row
-says what happened and signals ready anyway. OpenSky is given 8 seconds, inside
-the screenshotter's budget.
+With nothing to show, the app does not signal ready, so the player keeps its
+previous content (see _Ready signal_); the first good answer signals. OpenSky
+is given 8 seconds per request, inside the screenshotter's budget.
 
 ## How it works
 
-- `src/data.ts` — what to fetch for each mode, the cache shape, the refresh
-  policy and dead reckoning.
-- `src/opensky.ts` — the API client: OAuth token, CORS proxy, rate limits.
-- `src/states.ts` — the state-vector wire format, parsed and narrowed.
-- `src/map.ts` — the equirectangular map, markers and collision-free labels.
-- `src/panel.ts` — the glass panel for each mode.
-- `src/traffic.ts` — what each aircraft is doing (its colour), and the
-  arrival / departure heuristic: low, descending and pointed at the field is
-  an arrival; low, climbing and pointed away is a departure. Elsewhere,
-  vertical speed past ±300 ft/min is descending or climbing.
-- `src/lookup.ts` — airports and flight numbers.
+| File                                                                 | Does                                                                                                                                |
+| -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `src/main.ts`                                                        | Start-up, drawing each mode, the refresh loop and failure handling.                                                                 |
+| `src/plan.ts`                                                        | Turns the settings into what to watch, or the notice saying what is missing.                                                        |
+| `src/data.ts`                                                        | What to fetch for each mode, the cache shape, the refresh policy and dead reckoning.                                                |
+| `src/opensky.ts`                                                     | The API client: OAuth token, CORS proxy, rate limits, states, paths, flight records, routes.                                        |
+| `src/states.ts`                                                      | The state-vector wire format, parsed and narrowed.                                                                                  |
+| `src/traffic.ts`                                                     | What each aircraft is doing (its colour and list icon), the arrival / departure heuristic, and the airport board's order and times. |
+| `src/route.ts`                                                       | Routes as itinerary legs, the current leg, progress, estimates out of range, and the flight status line.                            |
+| `src/airport-routes.ts`                                              | Batched, cached route lookups for the airport board and the list around a screen.                                                   |
+| `src/followed.ts`                                                    | A followed flight's path, route, airline and take-off airport.                                                                      |
+| `src/recover.ts`                                                     | Keeping, or finding again, a followed flight that is out of receiver range.                                                         |
+| `src/lookup.ts`                                                      | Airports, flight numbers, public callsigns and private-jet operators.                                                               |
+| `src/map.ts`, `src/ground.ts`                                        | The equirectangular map, markers, collision-free labels and thinned ground icons.                                                   |
+| `src/panel.ts`, `src/board.ts`, `src/route-view.ts`, `src/legend.ts` | The glass panel for each mode, the Arrivals / Departures board, route lines and the legend.                                         |
+| `src/format.ts`, `src/place.ts`                                      | Units, times with their timezone, the screen's position, place name and zone.                                                       |
+| `src/notice.ts`, `src/ready.ts`                                      | Full-screen notices and the ready signal.                                                                                           |
+| `src/contrast.ts`                                                    | WCAG contrast maths, used by the accessibility test.                                                                                |
 
 The map is the same public-domain Natural Earth outline as the Earthquake app,
 injected from `src/world.svg`, with Natural Earth's state and province
@@ -500,9 +528,12 @@ inland view (Delhi, Madrid, Denver) still has landmarks. Those come from
 simplified to about 2 km, rounded to about 1 km, and cut into 10° tiles. The
 map draws only the tiles under its window — a few dozen lines rather than
 the world's 45,000 — and none in a whole-world view, where they would be
-noise. They add about 1.2 MB to the single-file build. Every size is a multiple of one unit — a
-hundredth of the screen's width, or of its height scaled to 16:9, whichever is
-smaller — so the layout fills any screen shape. In portrait the panel drops
+noise. They add about 1.2 MB to the single-file build, which is about
+2.5 MB in all.
+
+Every size is a multiple of one unit — a hundredth of the screen's width, or
+of its height scaled to 16:9, whichever is smaller — so the layout fills any
+screen shape. In portrait the panel drops
 below the map. The build is folded into one self-contained `index.html` by
 `scripts/inline-bundle.mjs`.
 
@@ -533,8 +564,12 @@ bun install
 bun run dev
 ```
 
-`dev` starts the CORS proxy alongside the dev server, so OpenSky is reachable
-locally. Edit `mock-data.yml` to switch modes; there are commented examples.
+`dev` starts the CORS proxy (port 8080) alongside the dev server, so
+OpenSky is reachable locally. If another app's proxy already holds port
+8080, run `bun run edge-apps-dev` instead; it uses that proxy. Edit
+`mock-data.yml` to switch modes, and restart the dev server after changing
+it. `mock-data.yml` is git-ignored, so OpenSky credentials put there stay
+local.
 
 ```bash
 bun run type-check
