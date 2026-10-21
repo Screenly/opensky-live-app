@@ -10,7 +10,7 @@ with the **What to Show** setting:
 
 | Mode                   | Setting values                  | Shows                                                                                                                                          |
 | ---------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Around this screen** | `mode: area`, `radius_km`       | Every aircraft within the radius; highest, fastest and closest; the closest listed with where each is from and going (MUC Munich → DXB Dubai). |
+| **Around this screen** | `mode: area`, `radius`          | Every aircraft within the radius; highest, fastest and closest; the closest listed with where each is from and going (MUC Munich → DXB Dubai). |
 | **Airport**            | `mode: airport`, `airport`      | Arriving, departing and ground counts, and an Arrivals / Departures board: from or to where, and roughly when.                                 |
 | **Flight**             | `mode: flight`, `flight_number` | One flight followed across the map: what it is doing, From → To with progress, estimated arrival in the destination's time, flown path.        |
 

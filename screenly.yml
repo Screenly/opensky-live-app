@@ -52,7 +52,7 @@ settings:
         display_order: 3
         help_text: |
           For the Flight mode. A flight number (BA283), an ICAO callsign (BAW283) or a 6-character ICAO24 transponder address (4ca7b5). The flight is shown while it is airborne.
-  radius_km:
+  radius:
     type: string
     default_value: '100'
     title: Range

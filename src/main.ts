@@ -350,7 +350,7 @@ async function boot(): Promise<void> {
   fmt = new Formatter(units, resolveLocale(), resolveTimeZone(position))
   panel = new Panel(fmt, glyph)
 
-  radiusKm = rangeKm(getSettingWithDefault<number>('radius_km', 100), units)
+  radiusKm = rangeKm(getSettingWithDefault<number>('radius', 100), units)
 
   plan = await resolvePlan(say, notice)
   // A setting to fix: shown, so an operator sees it.

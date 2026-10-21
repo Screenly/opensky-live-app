@@ -17,7 +17,7 @@ const METADATA = {
 
 const BASE_SETTINGS = {
   mode: 'area',
-  radius_km: '100',
+  radius: '100',
   units: 'metric',
   color_scheme: 'dark',
   display_errors: 'false',
@@ -111,14 +111,14 @@ const VARIANT_RESOLUTIONS = [
 ] as const
 
 const VARIANTS: Array<[string, Record<string, string>]> = [
-  ['airport', { mode: 'airport', airport: 'SFO', radius_km: '60' }],
+  ['airport', { mode: 'airport', airport: 'SFO', radius: '50' }],
   ['flight', { mode: 'flight', flight_number: 'EI105' }],
   ['grounded', { mode: 'flight', flight_number: 'AI264' }],
   // Light theme for every mode (area, airport, flight, grounded)
   ['light', { color_scheme: 'light', units: 'metric' }],
   [
     'airport-light',
-    { mode: 'airport', airport: 'SFO', radius_km: '60', color_scheme: 'light' },
+    { mode: 'airport', airport: 'SFO', radius: '50', color_scheme: 'light' },
   ],
   [
     'flight-light',
