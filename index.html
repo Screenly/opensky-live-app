@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Flights - Screenly Edge App</title>
+    <script src="screenly.js?version=1"></script>
+    <script>
+      // The theme is set here, before first paint: the bundle runs
+      // after <body> is parsed, so leaving it to main.ts would flash the
+      // dark default on a light screen. screenly.js above is a blocking
+      // classic script, so window.screenly is already populated.
+      ;(function () {
+        var settings = (window.screenly && window.screenly.settings) || {}
+        document.documentElement.dataset.theme =
+          settings.color_scheme === 'light' ? 'light' : 'dark'
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="stage" class="loading">
+      <!-- src/world.svg is injected here at start-up. -->
+      <div id="map"></div>
+      <div id="planes"></div>
+      <div class="marker home" id="home">
+        <div class="pulse"></div>
+        <div class="dot"></div>
+        <div class="tag" id="home-tag">You</div>
+      </div>
+
+      <div class="marker port" id="port-from" hidden>
+        <div class="dot"></div>
+        <div class="tag"></div>
+      </div>
+      <div class="marker port to" id="port-to" hidden>
+        <div class="dot"></div>
+        <div class="tag"></div>
+      </div>
+
+      <div class="layer brand">
+        <span class="live" id="live"></span>
+        <b id="brand-title">Live flights</b>
+        <span id="brand-sub"></span>
+      </div>
+
+      <section class="layer panel" id="panel">
+        <header class="head">
+          <div class="label" id="head-label"></div>
+          <div class="headline">
+            <span class="big" id="head-big">—</span>
+          </div>
+          <div class="sub" id="head-sub"></div>
+        </header>
+        <div class="route" id="route" hidden></div>
+        <div class="facts" id="facts"></div>
+        <div class="list-label label" id="list-label"></div>
+        <ol class="list" id="list"></ol>
+      </section>
+
+      <footer class="layer status">
+        <div class="legend">
+          <span class="band arr" id="band-arr">↘ Descending</span>
+          <span class="band dep" id="band-dep">↗ Climbing</span>
+          <span class="band pass" id="band-pass">→ Level</span>
+          <span class="band gnd" id="band-gnd">Ground</span>
+        </div>
+        <div class="updated" id="updated">Connecting to OpenSky…</div>
+      </footer>
+
+      <div class="notice" id="notice">
+        <div class="notice-icon" id="notice-icon" aria-hidden="true"></div>
+        <div class="label" id="notice-label"></div>
+        <div class="notice-route" id="notice-route" hidden></div>
+        <div class="title" id="notice-title"></div>
+        <div class="detail" id="notice-detail"></div>
+        <div class="notice-fix" id="notice-fix" hidden></div>
+      </div>
+    </div>
+
+    <template id="plane-glyph">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <path
+          d="M32 3c2.2 0 3.6 2.3 3.6 5.4v14.3l22.6 13.1c.9.5 1.4 1.4 1.4 2.4v3.2c0 .9-.9 1.5-1.7 1.2L35.6 35.5v13.2l6.5 4.8c.6.4.9 1.1.9 1.8v2.4c0 .8-.8 1.4-1.6 1.1L32 55.9l-9.4 2.9c-.8.3-1.6-.3-1.6-1.1v-2.4c0-.7.3-1.4.9-1.8l6.5-4.8V35.5L6.1 42.6c-.8.3-1.7-.3-1.7-1.2v-3.2c0-1 .5-1.9 1.4-2.4l22.6-13.1V8.4C28.4 5.3 29.8 3 32 3z"
+        />
+      </svg>
+    </template>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

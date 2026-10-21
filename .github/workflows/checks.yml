@@ -1,0 +1,19 @@
+name: Checks
+
+# From https://github.com/Screenly/edge-apps-actions
+on:
+  push:
+    branches:
+      - develop
+      - master
+  pull_request:
+    branches:
+      - develop
+      - master
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: Screenly/edge-apps-actions/checks@v26.10.0
