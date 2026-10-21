@@ -382,6 +382,85 @@ end:
 Sign-in is OAuth2 client credentials; OpenSky no longer accepts username and
 password. Tokens are reused until a minute before they expire.
 
+## Limitations of the data
+
+What the app shows is only as good as its free sources. Each limit below was
+seen live while building it.
+
+### OpenSky positions
+
+- **Coverage has gaps.** OpenSky only hears aircraft near its volunteer
+  receivers. At the time of writing, a 100 km circle around Delhi had 30
+  aircraft, around Mumbai and Kochi none. A board for an uncovered airport
+  shows zeros; it does not mean the airport is quiet.
+- **Aircraft on the ground** are only seen where a receiver can see the
+  airport surface: dozens at Heathrow, Frankfurt and San Francisco, none at
+  Dubai or Mumbai.
+- **Oceans are out of range.** A flight drops out of the live data a few
+  hundred miles offshore (ASA815, San Diego → Honolulu). The app keeps it as
+  an estimate (see _Out of receiver range_), but its real position is
+  unknown until it is heard again.
+- **Altitude is pressure altitude**, not height above the ground: an
+  aircraft can read 0 ft or below sea level while flying. Under 100 ft it is
+  shown as `<100 ft`.
+- **"On the ground" lags touchdown** by a few seconds, so a landing aircraft
+  briefly reads as airborne.
+- **The aircraft-type field is almost always empty**, so private jets are
+  recognised from a short list of operator codes instead (see _Private
+  flights_).
+
+### OpenSky allowance
+
+- **Anonymous: 400 credits a day, per internet address** — shared by every
+  screen on the same network. **Signed in: 4,000 a day, per account.**
+  Positions, flown paths and flight records each have their own allowance.
+  See _Credits and refresh_ for how many screens fit.
+- When an allowance runs out, OpenSky refuses requests until its reset
+  (`429`, with a wait of up to a day): the screen shows its last reading,
+  marked stale.
+- **Flight records (who departed where) for past days are refused
+  anonymously** (`403`).
+- OpenSky's API is called through Screenly's CORS proxy; it does not allow
+  browsers to call it directly.
+
+### Routes and times
+
+- **No schedules.** OpenSky tracks what aircraft do, not what airlines
+  planned: there are no scheduled or actual departure and arrival times,
+  gates or delays. Every time on screen is an **estimate** from position
+  and speed, marked `~`. Real times need a paid schedule API (AeroDataBox,
+  FlightAware).
+- **Routes come from callsign tables**, not from today's flight. OpenSky's
+  flight-route service (`flightroutes.opensky-network.org`) is the most
+  accurate, but airlines reuse flight numbers: UAL1050 was listed as Newark
+  → Cancún while departing San Francisco. A route the aircraft clearly is
+  not flying is hidden, and the row shows its country.
+- **OpenSky's flight-route service is undocumented** — it is what OpenSky's
+  own map uses, not part of its public API — and may change or close
+  without notice. adsbdb is the fallback.
+- **adsbdb is a community database** and often stale (AAL735 listed as
+  Aruba → New York while flying Heathrow → Charlotte). It is used only
+  where OpenSky has nothing, and for airline names.
+- **Private and charter flights have no route** (NetJets EJA888, Flexjet).
+  The app shows where OpenSky saw them take off, and "Not published" for
+  the destination.
+- **A destination is only recorded after landing.** OpenSky's flight
+  records leave the arrival airport empty until then, and its arrivals
+  lists are built later still.
+- **OpenSky's departure lists can miss flights** — ASA815 was missing from
+  San Diego's, though its own aircraft record showed it leaving there — and
+  "first seen" includes taxiing, so it is not a take-off time.
+
+### Bundled data
+
+- **About 3,000 airports** with scheduled service are known by code; a
+  small airfield is not, and a route through one is not shown.
+- **City names** are each airport's own town: Athens appears as
+  Spata-Artemida, Goa as Vasco da Gama.
+- **The private-jet operator list is short** (NetJets, Flexjet, VistaJet,
+  XOJET, Gama Aviation, flyExclusive), each code confirmed against adsbdb;
+  others read as ordinary flights.
+
 ## Behaviour when the feed fails
 
 This follows the Edge Apps failure-mode algorithm. Credentials are optional —
