@@ -24,6 +24,9 @@
     "screenshots": "edge-apps-scripts screenshots"
   },
   "prettier": "./.prettierrc.json",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "devDependencies": {
     "@photostructure/tz-lookup": "^11.5.0",
     "@playwright/test": "^1.58.0",
