@@ -24,17 +24,20 @@
     "screenshots": "edge-apps-scripts screenshots"
   },
   "prettier": "./.prettierrc.json",
+  "engines": {
+    "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
+  },
   "devDependencies": {
     "@photostructure/tz-lookup": "^11.5.0",
     "@playwright/test": "^1.58.0",
     "@screenly/edge-apps": "^26.8.0",
     "@types/bun": "^1.3.0",
-    "@types/node": "^25.4.0",
-    "npm-run-all2": "^8.0.4",
+    "@types/node": "^26.6.5",
+    "npm-run-all2": "^9.0.3",
     "offline-geocode-city": "^1.0.2",
     "playwright": "^1.58.0",
     "prettier": "^3.8.1",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "author": "Salman Faris",
   "trustedDependencies": [

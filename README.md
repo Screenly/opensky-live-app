@@ -190,6 +190,8 @@ Change a colour, run `bun run test`.
 
 ## Development
 
+Requires Bun and Node 22.22.2+, 24.15+ or 26+ (`run-p` runs on Node).
+
 ```bash
 bun install
 bun run dev
