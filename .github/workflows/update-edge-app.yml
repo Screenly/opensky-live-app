@@ -20,7 +20,7 @@ jobs:
     environment: stage
     steps:
       - uses: actions/checkout@v7
-      - uses: Screenly/edge-apps-actions/update@v26.10.0
+      - uses: Screenly/edge-apps-actions/update@v26.10.2
         with:
           screenly_api_token: ${{ secrets.SCREENLY_API_TOKEN }}
           environment: stage
@@ -45,7 +45,7 @@ jobs:
             echo "Tag $GITHUB_REF_NAME is not on $DEFAULT_BRANCH; refusing to deploy to production."
             exit 1
           fi
-      - uses: Screenly/edge-apps-actions/update@v26.10.0
+      - uses: Screenly/edge-apps-actions/update@v26.10.2
         with:
           screenly_api_token: ${{ secrets.SCREENLY_API_TOKEN }}
           environment: production
